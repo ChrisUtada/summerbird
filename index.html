@@ -813,6 +813,7 @@
             cursor: not-allowed;
         }
         .combo-btns .btn-clear {
+            flex: 1;
             background: #2a2420;
             border: 1px solid #4a4034;
             color: #b3a287;
@@ -839,16 +840,17 @@
         .reason-title .count {
             color: #f0c060;
         }
-        /* 线索选择区（推理抽屉内，单列简洁列表） */
+        /* 线索选择区（推理抽屉内，与推理结果两栏网格一致） */
         .clue-pick {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            max-height: 260px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            max-height: 240px;
             overflow-y: auto;
             flex-shrink: 0;
         }
         .clue-pick .empty {
+            grid-column: 1 / -1;
             color: #6d6048;
         }
         .toast {
