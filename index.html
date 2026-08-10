@@ -301,12 +301,16 @@
             background: #3a2a1a;
         }
         .clue-highlight.collected {
+            color: inherit;
+            font-weight: normal;
             text-decoration: underline;
             text-underline-offset: 3px;
             text-decoration-thickness: 2px;
+            text-decoration-color: #e8b84a;
+            cursor: default;
         }
         .clue-highlight.collected:hover {
-            background: #3a2a1a;
+            background: none;
         }
         .note-highlight {
             color: #8fd0c0;
@@ -319,9 +323,12 @@
             background: #12312a;
         }
         .note-highlight.collected {
+            color: inherit;
+            font-weight: normal;
             text-decoration: underline;
             text-underline-offset: 3px;
             text-decoration-thickness: 2px;
+            text-decoration-color: #8fd0c0;
         }
         .note-highlight.locked {
             color: inherit;
@@ -343,9 +350,16 @@
             background: #2a1a3a;
         }
         .char-highlight.collected {
+            color: inherit;
+            font-weight: normal;
             text-decoration: underline;
             text-underline-offset: 3px;
             text-decoration-thickness: 2px;
+            text-decoration-color: #d8a8f0;
+            cursor: default;
+        }
+        .char-highlight.collected:hover {
+            background: none;
         }
         .note-pop {
             position: fixed;
@@ -897,7 +911,8 @@
             color: #a8977d;
             border-top: 1px solid #3a332b;
             margin-top: 8px;
-            padding-top: 6px;
+            padding-top: 8px;
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
         .reason-title .count {
@@ -907,7 +922,8 @@
         .clue-pick-title {
             font-size: 12px;
             color: #a8977d;
-            margin-top: 6px;
+            margin-top: 8px;
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
         .clue-pick-title .count {
@@ -917,7 +933,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            max-height: 220px;
+            max-height: 200px;
             overflow-y: auto;
             flex-shrink: 0;
         }
@@ -928,6 +944,31 @@
             font-size: 12px;
             color: #6d6048;
             padding: 6px 0;
+        }
+        /* 组合推理结论（内联文本行） */
+        .combo-results {
+            flex-shrink: 0;
+            margin: 4px 0 2px;
+        }
+        .combo-result {
+            font-size: 13px;
+            color: #d8cbb0;
+            background: rgba(232, 184, 74, 0.06);
+            border: 1px solid #4a4034;
+            border-left: 3px solid #f0c060;
+            border-radius: 8px;
+            padding: 8px 12px;
+            line-height: 1.7;
+            margin-bottom: 8px;
+        }
+        .combo-result .combo-result-tag {
+            display: inline-block;
+            font-size: 11px;
+            color: #f0c060;
+            border: 1px solid #5a4a32;
+            border-radius: 10px;
+            padding: 0 8px;
+            margin-right: 6px;
         }
         .toast {
             position: fixed;
@@ -1061,6 +1102,7 @@
                             <button class="btn-combine" id="combineBtn" disabled>组合推理</button>
                             <button class="btn-clear" id="clearSelection">清空</button>
                         </div>
+                        <div class="combo-results" id="comboResults"></div>
                         <div class="reason-title">推理结果 <span class="count" id="reasonTitleCount">(0)</span></div>
                         <div id="clueList" style="flex:1; overflow-y:auto;"></div>
                     </div>
@@ -1105,6 +1147,7 @@
             allBlocks: [], // 所有可拖动块
             selectedClueIds: [], // 选中的线索块ID（用于组合）
             slotConfigs: [],
+            comboResults: [], // 已完成的组合推理 { key, text, noteId }
         };
 
         // ---------- 数据（内容全部来自 story.js，剧本经 compiler.js 编译） ----------
@@ -1139,6 +1182,7 @@
         const notePopBody = document.getElementById('notePopBody');
         const historyBody = document.getElementById('historyBody');
         const comboSlots = document.getElementById('comboSlots');
+        const comboResults = document.getElementById('comboResults');
         const cluePick = document.getElementById('cluePick');
         const cluePickCount = document.getElementById('cluePickCount');
         const reasonTitleCount = document.getElementById('reasonTitleCount');
@@ -1394,24 +1438,15 @@
             const key = sorted.join('+');
             const combo = COMBINATIONS[key];
             if (combo) {
-                const blockId = 'reason_' + key.replace(/\+/g, '_');
-                if (!state.allBlocks.find(b => b.id === blockId)) {
-                    state.allBlocks.push({
-                        id: blockId,
-                        type: 'reason',
-                        label: '推理：' + combo.text.slice(0, 20) + '…',
-                        detail: combo.text,
-                        sourceId: key,
-                        sourceType: 'reason',
-                        owner: 'all'
-                    });
-                    if (combo.noteId) addNote(combo.noteId, 'all');
-                    showToast(`推理成功！新推理块已生成`, 'success');
-                    state.selectedClueIds = [];
-                    renderAll();
-                } else {
+                if (state.comboResults.find(r => r.key === key)) {
                     showToast('该推理已存在', '');
+                    return;
                 }
+                state.comboResults.push({ key: key, text: combo.text, noteId: combo.noteId });
+                if (combo.noteId) addNote(combo.noteId, 'all');
+                showToast('✓ 推理成功！新推理结论已生成', 'success');
+                state.selectedClueIds = [];
+                renderAll();
             } else {
                 showToast('这些线索无法组合，请尝试其他组合', 'error');
             }
@@ -1838,7 +1873,18 @@
             }
             reasonTitleCount.textContent = `(${items.length})`;
 
+            // 组合推理结论（内联文本，不生成卡片）
+            if (state.comboResults.length === 0) {
+                comboResults.innerHTML = '';
+            } else {
+                comboResults.innerHTML = state.comboResults.map(r =>
+                    `<div class="combo-result"><span class="combo-result-tag">推理</span>${r.text}</div>`
+                ).join('');
+            }
+
             combineBtn.disabled = sel.length < 2;
+            // 重建后刷新所有拖拽块的 draggable 属性
+            refreshDraggable();
         }
 
         function renderItems() {
@@ -1954,8 +2000,7 @@
         }
 
         function updateCounts() {
-            const usedReason = state.allBlocks.filter(b => b.type === 'reason' && state.usedBlockIds.has(b.id));
-            reasonCount.textContent = usedReason.length;
+            reasonCount.textContent = state.comboResults.length;
         }
 
         // ---------- 加载场景 ----------
