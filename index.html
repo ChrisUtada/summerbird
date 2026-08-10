@@ -395,37 +395,9 @@
             color: #8a7b64;
             margin-bottom: 2px;
         }
-        /* 线索选择卡片（推理抽屉内，复用自原弹窗） */
-        .modal-clue {
-            background: #201b16;
-            border: 1px solid #3a332b;
-            border-left: 3px solid #8fae74;
-            border-radius: 8px;
-            padding: 8px 12px;
+        /* 线索选择卡片（与推理结果卡片同款式，仅点击选择用） */
+        .clue-item {
             cursor: pointer;
-            transition: all 0.2s;
-        }
-        .modal-clue:hover {
-            border-color: #d65a3c;
-            background: #2a241d;
-        }
-        .modal-clue.selected {
-            border-color: #f0c060;
-            border-left-color: #f0c060;
-            background: #3a2e14;
-        }
-        .modal-clue .modal-clue-name {
-            font-size: 14px;
-            color: #e8decc;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .modal-clue .modal-clue-desc {
-            font-size: 12px;
-            color: #a39680;
-            line-height: 1.6;
-            margin-top: 3px;
         }
         .slot {
             display: inline-block;
@@ -441,6 +413,7 @@
             background: rgba(30, 44, 30, 0.35);
             border-radius: 0 0 4px 4px;
             cursor: default;
+            text-align: center;
         }
         .slot .placeholder {
             color: #6d8058;
@@ -878,21 +851,6 @@
         .clue-pick .empty {
             color: #6d6048;
         }
-        /* 组合推理结果卡片（不可拖拽，仅展示） */
-        .result-card {
-            background: rgba(232, 184, 74, 0.07);
-            border: 1px solid #5a4a32;
-            border-left: 3px solid #f0c060;
-            border-radius: 10px;
-            padding: 10px 14px;
-            color: #e6dccb;
-        }
-        .result-card .block-detail {
-            font-size: 13px;
-            color: #d8cbb0;
-            line-height: 1.7;
-            margin-top: 6px;
-        }
         .toast {
             position: fixed;
             top: 30px;
@@ -1067,7 +1025,7 @@
             allBlocks: [], // 所有可拖动块
             selectedClueIds: [], // 选中的线索块ID（用于组合）
             slotConfigs: [],
-            comboResults: [], // 已完成的组合推理 { key, text, noteId }
+            combinedKeys: [], // 已完成的组合 key（防止重复推理）
         };
 
         // ---------- 数据（内容全部来自 story.js，剧本经 compiler.js 编译） ----------
@@ -1355,13 +1313,27 @@
             const key = sorted.join('+');
             const combo = COMBINATIONS[key];
             if (combo) {
-                if (state.comboResults.find(r => r.key === key)) {
+                if (combo.block) {
+                    if (state.allBlocks.find(b => b.id === combo.block.id)) {
+                        showToast('该推理已存在', '');
+                        return;
+                    }
+                    state.allBlocks.push({
+                        id: combo.block.id,
+                        type: 'reason',
+                        label: combo.block.label,
+                        detail: combo.block.detail,
+                        sourceId: key,
+                        sourceType: 'reason',
+                        owner: 'all'
+                    });
+                } else if (state.combinedKeys.find(k => k === key)) {
                     showToast('该推理已存在', '');
                     return;
                 }
-                state.comboResults.push({ key: key, text: combo.text, noteId: combo.noteId });
+                if (!state.combinedKeys.includes(key)) state.combinedKeys.push(key);
                 if (combo.noteId) addNote(combo.noteId, 'all');
-                showToast('✓ 推理成功！新推理结论已生成', 'success');
+                showToast('✓ 推理成功！新推理结果已生成', 'success');
                 state.selectedClueIds = [];
                 renderAll();
             } else {
@@ -1415,15 +1387,7 @@
             }
             currentSceneOwner = scene.owner || 'wu';
 
-            // 初始化块
-            if (scene.initBlocks) {
-                scene.initBlocks.forEach(b => {
-                    if (!state.allBlocks.find(ex => ex.id === b.id)) {
-                        state.allBlocks.push({ ...b });
-                    }
-                });
-            }
-
+            // 注意：填空块不再自动入包，全部由线索组合产出
             state.slotConfigs = scene.slotConfigs || [];
 
             if (storySceneId !== state.scene) {
@@ -1497,16 +1461,16 @@
             historyLog = [];
             stopTyping();
 
-            // 底部推进提示
-            storyEl.appendChild(storyHint);
-            storyHint.textContent = '▾ 点击空白处推进剧情';
-
             // 第一行作为章节标题直接显示（非打字机）
             const title = storyDom[0];
             title.classList.add('chapter-title');
             historyLog.push({ html: title.innerHTML, who: detectSpeaker(title) });
             lineIndex = 1;
             storyEl.appendChild(title);
+
+            // 底部推进提示（放最后，避免被裁剪循环移除）
+            storyEl.appendChild(storyHint);
+            storyHint.textContent = '▾ 点击空白处推进剧情';
         }
 
         // 笔记高亮点击：弹出悬浮窗（未解锁时提示）
@@ -1619,7 +1583,7 @@
             storyEl.appendChild(line);
             // 按实际高度裁剪：超出剧情框高度的最旧行移除，保留底部留白
             let guard = 0;
-            while (storyEl.scrollHeight > storyEl.clientHeight + 2 && storyEl.children.length > 1 && guard < 50) {
+            while (storyEl.scrollHeight > storyEl.clientHeight + 2 && storyEl.children.length > 2 && guard < 50) {
                 storyEl.removeChild(storyEl.firstChild);
                 guard++;
             }
@@ -1717,62 +1681,54 @@
         });
 
         function renderClues() {
-            // 线索选择列表：全部可用线索，点击选中/取消
+            // 线索选择列表：全部可用线索（与结果卡片同款式），点击选中/取消
             const sel = state.selectedClueIds;
             const pickItems = state.allBlocks.filter(b =>
                 b.type === 'clue' && !state.usedBlockIds.has(b.id));
             if (pickItems.length === 0) {
-                cluePick.innerHTML = '<div class="empty">暂无可用线索，请先点击剧情中的高亮词收集</div>';
+                cluePick.innerHTML = '<div class="empty">线索只有点击剧情中的高亮词才能获得</div>';
             } else {
                 cluePick.innerHTML = pickItems.map(block => {
                     const isSelected = sel.includes(block.id);
                     const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
                     const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
                     return `
-                        <div class="modal-clue ${isSelected ? 'selected' : ''}" data-block="${block.id}">
-                            <div class="modal-clue-name">${block.label}
-                                <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
-                            </div>
-                            <div class="modal-clue-desc">${block.detail}</div>
+                        <div class="drag-block clue-item selectable ${isSelected ? 'selected' : ''}" data-block="${block.id}" data-type="clue" data-owner="${block.owner}">
+                            ${block.label}
+                            <span class="block-type">线索</span>
+                            <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                            <div class="block-detail">${block.detail}</div>
                         </div>
                     `;
                 }).join('');
             }
-            cluePick.querySelectorAll('.modal-clue').forEach(el => {
+            cluePick.querySelectorAll('.clue-item').forEach(el => {
                 el.addEventListener('click', function() {
                     toggleSelectClue(this.dataset.block);
                     renderClues();
                 });
             });
 
-            // 推理结果：填空块 + 组合结果卡片
+            // 推理结果：仅由线索组合产出的卡片（可拖拽填空，样式与其他卡片一致）
             let items = state.allBlocks.filter(b =>
                 b.type === 'reason' && !state.usedBlockIds.has(b.id));
-            let html = items.map(block => {
-                const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
-                const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
-                return `
-                    <div class="drag-block" data-block="${block.id}" data-type="reason" data-owner="${block.owner}">
-                        ${block.label}
-                        <span class="block-type">推理</span>
-                        <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
-                        <div class="block-detail">${block.detail}</div>
-                    </div>
-                `;
-            }).join('');
-            html += state.comboResults.map(r =>
-                `<div class="result-card">
-                    <span class="block-type">推理</span>
-                    <span class="owner-tag all">结论</span>
-                    <div class="block-detail">${r.text}</div>
-                </div>`
-            ).join('');
-            if (html) {
-                clueList.innerHTML = html;
+            if (items.length === 0) {
+                clueList.innerHTML = '<div class="empty">推理结果只有通过线索组合才能获得</div>';
             } else {
-                clueList.innerHTML = '<div class="empty">推理结果将显示在这里</div>';
+                clueList.innerHTML = items.map(block => {
+                    const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
+                    const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
+                    return `
+                        <div class="drag-block" data-block="${block.id}" data-type="reason" data-owner="${block.owner}">
+                            ${block.label}
+                            <span class="block-type">推理</span>
+                            <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                            <div class="block-detail">${block.detail}</div>
+                        </div>
+                    `;
+                }).join('');
             }
-            reasonTitleCount.textContent = `(${items.length + state.comboResults.length})`;
+            reasonTitleCount.textContent = `(${items.length})`;
 
             combineBtn.disabled = sel.length < 2;
             // 重建后刷新所有拖拽块的 draggable 属性
@@ -1834,7 +1790,7 @@
 
         // 刷新所有拖拽块的 draggable 属性
         function refreshDraggable() {
-            document.querySelectorAll('.drag-block:not(.used)').forEach(el => {
+            document.querySelectorAll('.drag-block:not(.used):not(.clue-item)').forEach(el => {
                 el.setAttribute('draggable', 'true');
             });
         }
@@ -1892,7 +1848,8 @@
         }
 
         function updateCounts() {
-            reasonCount.textContent = state.comboResults.length;
+            const items = state.allBlocks.filter(b => b.type === 'reason' && !state.usedBlockIds.has(b.id));
+            reasonCount.textContent = items.length;
         }
 
         // ---------- 加载场景 ----------
@@ -1957,26 +1914,29 @@
             }
 
             const expected = slot.dataset.expect;
-            if (blockId === expected) {
-                // 匹配成功
+            const block = state.allBlocks.find(b => b.id === blockId);
+            // 支持人物 / 线索 / 推理结果 / 物品任意类型卡片：id 精确匹配或标签（答案）匹配
+            const matched = blockId === expected || (block && slot.dataset.answer && block.label === slot.dataset.answer);
+            if (matched) {
+                // 匹配成功（统一按 slot 期望的块记录已使用）
                 slot.dataset.filled = 'true';
-                slot.dataset.content = blockId;
-                const block = state.allBlocks.find(b => b.id === blockId);
-                if (block) {
-                    slot.innerHTML = `<span class="slot-content">${block.label}</span>`;
+                slot.dataset.content = expected;
+                const showBlock = state.allBlocks.find(b => b.id === expected) || block;
+                if (showBlock) {
+                    slot.innerHTML = `<span class="slot-content">${showBlock.label}</span>`;
                     slot.classList.add('filled', 'correct-flash');
-                    state.usedBlockIds.add(blockId);
+                    state.usedBlockIds.add(expected);
                     // 从组合选中移除（已使用的块不再可选）
                     const selIdx = state.selectedClueIds.indexOf(blockId);
                     if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
                     // 人物块可反复拖动填空，不标记已使用；其余块标记为已使用（防止重复拖动）
-                    if (block.type !== 'char') {
+                    if (block && block.type !== 'char') {
                         document.querySelectorAll(`.drag-block[data-block="${blockId}"]`).forEach(el => {
                             el.classList.add('used');
                             el.setAttribute('draggable', 'false');
                         });
                     }
-                    showToast(`✓ 填入「${block.label}」成功！`, 'success');
+                    showToast(`✓ 填入「${showBlock.label}」成功！`, 'success');
                     // 立即刷新各面板，不等整体刷新
                     renderClues();
                     renderItems();

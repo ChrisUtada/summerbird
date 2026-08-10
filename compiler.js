@@ -77,7 +77,7 @@
             const slotId = nextSlotId();
             slotConfigs.push({ id: slotId, expected: block.id, label: block.label });
             return '<span class="slot" data-slot="' + slotId + '" data-expect="' + block.id +
-                '"><span class="placeholder">______</span></span>';
+                '" data-answer="' + block.label + '"><span class="placeholder">______</span></span>';
         });
         return text;
     }

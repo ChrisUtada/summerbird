@@ -80,10 +80,16 @@ for (const id of ids) {
 
 for (const key of Object.keys(STORY.combinations || {})) {
     const combo = STORY.combinations[key];
-    key.split('+').forEach(part => {
+    const parts = key.split('+');
+    const sorted = [...parts].sort().join('+');
+    if (sorted !== key) errors.push('[组合 ' + key + '] key 未按字母排序，应为: ' + sorted);
+    parts.forEach(part => {
         if (!allClueIds.has(part)) errors.push('[组合 ' + key + '] 条目不存在: ' + part);
     });
     if (combo.noteId && !DATA.notes[combo.noteId]) errors.push('[组合 ' + key + '] noteId 不存在: ' + combo.noteId);
+    if (combo.block) {
+        if (!combo.block.id || !combo.block.label || !combo.block.detail) errors.push('[组合 ' + key + '] block 缺少 id/label/detail');
+    }
 }
 
 console.log('场景: ' + ids.length + ' | 线索: ' + Object.keys(DATA.clues || {}).length +
