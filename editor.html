@@ -162,6 +162,8 @@
 <div id="topbar">
     <span class="brand">凤尾庄 · <span>剧本编辑器</span></span>
     <select id="sceneSel" title="场景"></select>
+    <button id="btnSceneUp" title="上移场景顺序">▲ 上移</button>
+    <button id="btnSceneDown" title="下移场景顺序">▼ 下移</button>
     <select id="sceneBg" title="天气背景">
         <option value="cloudy">天气：阴天</option>
         <option value="rain">天气：雨天</option>
@@ -295,6 +297,19 @@
         renderSceneSel();
     }
     $('sceneSel').addEventListener('change', function () { selectScene(this.value); });
+    function moveScene(dir) {
+        const idx = ED.scenes.findIndex(s => s.id === currentSceneId);
+        if (idx < 0) return;
+        const to = idx + dir;
+        if (to < 0 || to >= ED.scenes.length) return;
+        const tmp = ED.scenes[idx];
+        ED.scenes[idx] = ED.scenes[to];
+        ED.scenes[to] = tmp;
+        markDirty();
+        renderSceneSel();
+    }
+    $('btnSceneUp').addEventListener('click', function () { moveScene(-1); });
+    $('btnSceneDown').addEventListener('click', function () { moveScene(1); });
     $('sceneBg').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.bg = this.value; markDirty(); } });
     $('sceneOwner').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.owner = this.value; markDirty(); } });
     $('sceneGoto').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.goto = this.value || null; markDirty(); } });
