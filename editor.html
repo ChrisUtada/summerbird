@@ -640,7 +640,7 @@
             };
         });
         return {
-            startScene: ED.startScene || (ED.scenes[0] && ED.scenes[0].id) || '',
+            startScene: ED.scenes[0] ? ED.scenes[0].id : '', // 列表第一个场景即起始场景
             speakers: { wu: '吴秋崖', shan: '商难', old: '张道诚', zhang: '张泽平' },
             data: data,
             combinations: combinations,
