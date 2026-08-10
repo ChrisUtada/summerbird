@@ -1069,6 +1069,7 @@
             slotConfigs: [],
             combinedKeys: [], // 已完成的组合 key（防止重复推理）
         };
+        let completedScenes = new Set(); // 本局已完成（含读完）的场景 id，防止重复完成
 
         // ---------- 数据（内容全部来自 story.js，剧本经 compiler.js 编译） ----------
         const STORY = window.__STORY__ || {};
@@ -1630,6 +1631,11 @@
                     blocked = true;
                     storyHint.textContent = '▾ 填入空缺内容后继续';
                     showToast('此处需要填入线索才能继续', '');
+                    return;
+                }
+                // 读完最后一行且本行无未填槽：场景自动完成（触发跳转等）
+                if (lineIndex >= storyDom.length) {
+                    completeScene(SCENES[state.scene]);
                 }
             });
         }
@@ -1890,6 +1896,15 @@
 
         // ---------- 声明式场景完成（原 onComplete 改为 toasts/rewards/goto 数据） ----------
         function completeScene(scene) {
+            if (completedScenes.has(scene.id)) {
+                // 重入（如重进已完成场景）：仅恢复跳转状态，不重复发放
+                if (scene.goto) {
+                    pendingScene = scene.goto;
+                    storyHint.textContent = scene.nextHint || '▾ 点击继续';
+                }
+                return;
+            }
+            completedScenes.add(scene.id);
             const owner = scene.owner || 'wu';
             (scene.toasts || []).forEach(t => {
                 showToast(t.text, t.type || 'success');
