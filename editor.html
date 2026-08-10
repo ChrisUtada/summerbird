@@ -117,20 +117,26 @@
     #preview .slot .placeholder { color: #6d8058; font-size: 12px; }
     #preview .empty-tip { color: #6d6048; font-size: 13px; padding: 20px 0; text-align: center; }
     /* 组合页 */
-    #comboText {
-        flex: 1;
-        background: #12100e;
-        color: #c9bb9f;
+    #comboList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    /* 组合行 */
+    #comboList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .combo-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        background: #1d1813;
         border: 1px solid #3a332b;
         border-radius: 8px;
-        padding: 12px 14px;
-        font-family: 'Consolas', monospace;
-        font-size: 13px;
-        line-height: 1.8;
-        resize: none;
-        outline: none;
-        white-space: pre;
+        padding: 6px 10px;
+        flex-wrap: wrap;
     }
+    .combo-row select {
+        min-width: 120px;
+        background: #12100e;
+        flex: 1;
+    }
+    .combo-row .c-op { color: #8a7b64; font-size: 13px; flex-shrink: 0; }
+    .combo-row .c-del { flex-shrink: 0; }
     /* 词条页 */
     #entryList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
     .entry-row {
@@ -207,8 +213,9 @@
     </div>
     <!-- 组合页 -->
     <div class="page" id="page-combo">
-        <div class="hint-line">每行一条：<code>线索A + 线索B → 推理结果卡名</code>，可用 <code>~ 笔记名</code> 同时解锁笔记。例：<code>青团 + 烟斗 → 九头金乌 ~ 林洪的疯癫</code></div>
-        <textarea id="comboText" spellcheck="false" placeholder="青团 + 烟斗 → 九头金乌 ~ 林洪的疯癫"></textarea>
+        <div class="hint-line">每一行是一个推理组合：<b style="color:#e8decc">线索A + 线索B → 产出推理卡片</b>，可选择同时解锁笔记。笔记内容在「词条」页的笔记词条中编辑。下拉不足时可先在剧本或词条页添加。</div>
+        <div id="comboList"></div>
+        <div style="flex-shrink:0"><button id="btnComboAdd">＋ 新增组合</button></div>
     </div>
     <!-- 词条页 -->
     <div class="page" id="page-entry">
@@ -413,6 +420,13 @@
     }
     function renderEntries() {
         const list = $('entryList');
+        const PLACEHOLDER = {
+            note: '笔记内容（解锁后查看）',
+            block: '推理结果卡片内容',
+            char: '人物描述（可空）',
+            clue: '线索描述（可空）',
+            item: '物品描述（可空）'
+        };
         if (ED.entries.length === 0) {
             list.innerHTML = '<div class="hint-line">暂无词条——在剧本中用 {人:} {线:} {物:} {记:} {填:} 标记，或先写线索组合</div>';
             return;
@@ -423,7 +437,7 @@
             row.className = 'entry-row';
             row.innerHTML = '<span class="e-type">' + TYPE_LABEL[e.type] + '</span>' +
                 '<input class="e-name" value="' + escapeHtml(e.name) + '" />' +
-                '<input class="e-desc" value="' + escapeHtml(e.desc || '') + '" placeholder="描述（可留空）" />' +
+                '<input class="e-desc" value="' + escapeHtml(e.desc || '') + '" placeholder="' + PLACEHOLDER[e.type] + '" />' +
                 '<button class="e-del danger">删除</button>';
             list.appendChild(row);
             const nameInput = row.querySelector('.e-name');
@@ -461,30 +475,58 @@
         refreshEntries();
     }
 
-    // ---------- 组合 ----------
-    function parseCombos() {
-        const text = $('comboText').value;
-        ED.combos = [];
-        text.split('\n').forEach(function (line) {
-            line = line.trim();
-            if (!line || line.indexOf('#') === 0) return;
-            const m = line.match(/^([^+→~]+?)\s*\+\s*([^+→~]+?)\s*(?:→\s*([^~]+?))?\s*(?:~\s*(.+))?$/);
-            if (!m) return;
-            ED.combos.push({
-                a: m[1].trim(),
-                b: m[2].trim(),
-                block: m[3] ? m[3].trim() : '',
-                note: m[4] ? m[4].trim() : ''
+    // ---------- 组合（下拉行式） ----------
+    function clueEntries() { return ED.entries.filter(function (e) { return e.type === 'clue' || e.type === 'item'; }); }
+    function blockEntries() { return ED.entries.filter(function (e) { return e.type === 'block'; }); }
+    function noteEntries() { return ED.entries.filter(function (e) { return e.type === 'note'; }); }
+    function selOptions(field, entries, current) {
+        let html = '<select data-f="' + field + '"><option value="">（空）</option>';
+        entries.forEach(function (e) {
+            html += '<option value="' + escapeHtml(e.name) + '"' + (e.name === current ? ' selected' : '') + '>' + escapeHtml(e.name) + '</option>';
+        });
+        if (current && !entries.find(function (e) { return e.name === current; })) {
+            html += '<option value="' + escapeHtml(current) + '" selected>' + escapeHtml(current) + '（词条缺失）</option>';
+        }
+        html += '</select>';
+        return html;
+    }
+    function renderComboRows() {
+        const list = $('comboList');
+        list.innerHTML = '';
+        if (ED.combos.length === 0) {
+            list.innerHTML = '<div class="hint-line">暂无组合——点击下方「＋ 新增组合」开始</div>';
+            return;
+        }
+        ED.combos.forEach(function (c, idx) {
+            const row = document.createElement('div');
+            row.className = 'combo-row';
+            row.innerHTML =
+                '<span class="c-op">线索</span>' + selOptions('a', clueEntries(), c.a) +
+                '<span class="c-op">＋</span>' + selOptions('b', clueEntries(), c.b) +
+                '<span class="c-op">→</span>' + selOptions('block', blockEntries(), c.block) +
+                '<span class="c-op">解锁笔记</span>' + selOptions('note', noteEntries(), c.note) +
+                '<button class="c-del danger">删除</button>';
+            list.appendChild(row);
+            row.querySelectorAll('select').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                    const v = this.value || '';
+                    if (this.dataset.f === 'a') c.a = v;
+                    else if (this.dataset.f === 'b') c.b = v;
+                    else if (this.dataset.f === 'block') c.block = v;
+                    else c.note = v;
+                    markDirty();
+                });
+            });
+            row.querySelector('.c-del').addEventListener('click', function () {
+                ED.combos.splice(idx, 1);
+                renderComboRows();
+                markDirty();
             });
         });
     }
-    function renderComboText() {
-        $('comboText').value = ED.combos.map(function (c) {
-            return c.a + ' + ' + c.b + (c.block ? ' → ' + c.block : '') + (c.note ? ' ~ ' + c.note : '');
-        }).join('\n');
-    }
-    $('comboText').addEventListener('input', function () {
-        parseCombos();
+    $('btnComboAdd').addEventListener('click', function () {
+        ED.combos.push({ a: '', b: '', block: '', note: '' });
+        renderComboRows();
         markDirty();
     });
 
@@ -496,7 +538,7 @@
             document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
             $('page-' + this.dataset.page).classList.add('active');
             if (this.dataset.page === 'entry') refreshEntries();
-            if (this.dataset.page === 'combo') renderComboText();
+            if (this.dataset.page === 'combo') renderComboRows();
         });
     });
 
@@ -692,7 +734,7 @@
                 importStory(parsed);
                 saveLocal();
                 selectScene(ED.startScene || (ED.scenes[0] && ED.scenes[0].id));
-                renderComboText();
+                renderComboRows();
                 refreshEntries();
                 validate();
                 $('saveState').textContent = '已导入 ' + file.name;
@@ -712,7 +754,7 @@
     // ---------- 启动 ----------
     loadED();
     renderSceneSel();
-    renderComboText();
+    renderComboRows();
     refreshEntries();
     validate();
 
@@ -722,7 +764,7 @@
             ED = ed;
             currentSceneId = ed.scenes && ed.scenes[0] ? ed.scenes[0].id : null;
             renderSceneSel();
-            renderComboText();
+            renderComboRows();
             refreshEntries();
             validate();
         },
