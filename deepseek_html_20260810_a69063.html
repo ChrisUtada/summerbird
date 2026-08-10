@@ -20,6 +20,73 @@
             justify-content: center;
             align-items: flex-start;
             padding: 16px;
+            position: relative;
+            overflow-x: hidden;
+            transition: background 1.2s ease;
+        }
+        /* 天气背景层（位于 #app 之后） */
+        .bg-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -2;
+            pointer-events: none;
+            transition: opacity 1.2s ease;
+        }
+        body.bg-cloudy .bg-layer {
+            background:
+                radial-gradient(ellipse 120% 70% at 50% -10%, #2a2a30 0%, #17171c 45%, #0b0b0e 100%);
+        }
+        body.bg-night .bg-layer {
+            background:
+                radial-gradient(ellipse 130% 80% at 50% -20%, #0e1220 0%, #070a12 50%, #020308 100%);
+        }
+        body.bg-rain .bg-layer {
+            background:
+                linear-gradient(180deg, #232a33 0%, #141a22 55%, #0b0f15 100%);
+        }
+        /* 雨天：canvas 随机粒子雨（见 JS 粒子引擎） */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+        body.bg-rain #particleCanvas {
+            opacity: 1;
+        }
+        .bg-fog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+        body.bg-rain .bg-fog {
+            opacity: 0.5;
+            background:
+                radial-gradient(ellipse 90% 50% at 50% 90%, rgba(190, 210, 230, 0.16) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 20% 70%, rgba(170, 190, 215, 0.10) 0%, transparent 70%);
+            animation: fogDrift 9s ease-in-out infinite alternate;
+        }
+        @keyframes fogDrift {
+            from {
+                transform: translateX(-2%);
+            }
+            to {
+                transform: translateX(2%);
+            }
         }
         #app {
             width: 100%;
@@ -968,7 +1035,10 @@
         }
     </style>
 </head>
-<body>
+<body class="bg-cloudy">
+    <div class="bg-layer"></div>
+    <canvas id="particleCanvas"></canvas>
+    <div class="bg-fog"></div>
 
     <div id="app">
         <!-- 顶栏 -->
@@ -1178,6 +1248,75 @@
         let toastTimer = null;
         let currentSceneOwner = 'wu';
 
+        // ---------- 随机粒子雨引擎（canvas） ----------
+        const particleCanvas = document.getElementById('particleCanvas');
+        const pctx = particleCanvas.getContext('2d');
+        let rainParticles = [];
+        let rainRaf = null;
+        const RAIN_COUNT = 90;
+
+        function resizeParticles() {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        }
+
+        function spawnRain() {
+            rainParticles = [];
+            for (let i = 0; i < RAIN_COUNT; i++) {
+                rainParticles.push({
+                    x: Math.random() * particleCanvas.width,
+                    y: Math.random() * particleCanvas.height,
+                    len: 6 + Math.random() * 16,
+                    speed: 8 + Math.random() * 10,
+                    drift: (Math.random() - 0.5) * 1.6,
+                    alpha: 0.12 + Math.random() * 0.35,
+                    w: 0.6 + Math.random() * 0.9
+                });
+            }
+        }
+
+        function drawRain() {
+            pctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            pctx.lineCap = 'round';
+            for (const p of rainParticles) {
+                pctx.globalAlpha = p.alpha;
+                pctx.strokeStyle = '#c8dcf0';
+                pctx.lineWidth = p.w;
+                pctx.beginPath();
+                pctx.moveTo(p.x, p.y);
+                pctx.lineTo(p.x + p.drift * 2, p.y + p.len);
+                pctx.stroke();
+                p.y += p.speed;
+                p.x += p.drift;
+                if (p.y > particleCanvas.height + p.len) {
+                    p.y = -p.len - Math.random() * 40;
+                    p.x = Math.random() * particleCanvas.width;
+                }
+            }
+            pctx.globalAlpha = 1;
+            rainRaf = requestAnimationFrame(drawRain);
+        }
+
+        function startRain() {
+            if (rainRaf) return;
+            resizeParticles();
+            spawnRain();
+            rainRaf = requestAnimationFrame(drawRain);
+        }
+
+        function stopRain() {
+            if (rainRaf) {
+                cancelAnimationFrame(rainRaf);
+                rainRaf = null;
+            }
+            pctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+        }
+
+        window.addEventListener('resize', function() {
+            resizeParticles();
+            if (rainRaf) spawnRain();
+        });
+
         // ---------- Toast ----------
         function showToast(text, type = '') {
             toast.textContent = text;
@@ -1363,6 +1502,7 @@
         // ---- 吴秋崖线 ----
         SCENES['wu_start'] = {
             owner: 'wu',
+            bg: 'cloudy',
             story: `
                 <div class="narr-line">✦ 第二章 · 凤尾庄的清晨 ✦</div>
                 <div class="narr-line"><span class="char-highlight" data-char="wuqiuyai">吴秋崖</span>被热醒了。夏日的天气让人浑身黏腻，汗水湿透了枕头。</div>
@@ -1409,6 +1549,7 @@
 
         SCENES['wu_linlou_hint'] = {
             owner: 'wu',
+            bg: 'rain',
             story: `
                 <div class="narr-line">✦ 临水楼的往事 ✦</div>
                 <div class="narr-line">张道诚沉默了很久，烟斗里的火光明明灭灭。</div>
@@ -1457,6 +1598,7 @@
 
         SCENES['wu_door'] = {
             owner: 'wu',
+            bg: 'night',
             story: `
                 <div class="narr-line">✦ 临水楼 · 锈死的大门 ✦</div>
                 <div class="narr-line">吴秋崖站在临水楼前。焦黑的大门紧锁，屋顶塌陷，门上刻着与轿子上一模一样的<span class="note-highlight" data-note="note_seal">封印铭文</span>。</div>
@@ -1483,6 +1625,7 @@
 
         SCENES['wu_end'] = {
             owner: 'wu',
+            bg: 'cloudy',
             story: `
                 <div class="narr-line">✦ 凤尾庄的真相 ✦</div>
                 <div class="narr-line">张道诚重新坐回椅子上，吸着烟斗，眼神空洞。</div>
@@ -1516,6 +1659,7 @@
         // ---- 商难线 ----
         SCENES['shan_start'] = {
             owner: 'shan',
+            bg: 'rain',
             story: `
                 <div class="narr-line">✦ 第一章 · 密林之中 ✦</div>
                 <div class="narr-line"><span class="char-highlight" data-char="shangnan">商难</span>独自站在密林中，后脑的疼痛依然清晰。<span class="char-highlight" data-char="zhangzeping">张泽平</span>不见了，吴秋崖也不见踪影。</div>
@@ -1549,6 +1693,7 @@
 
         SCENES['shan_cave'] = {
             owner: 'shan',
+            bg: 'night',
             story: `
                 <div class="narr-line">✦ 洞穴深处 ✦</div>
                 <div class="narr-line">商难伏低身子，钻入了洞穴。</div>
@@ -1624,9 +1769,13 @@
             state.totalSlots = state.slotConfigs.length;
 
             if (storySceneId !== state.scene) {
-                // 场景切换：淡出旧内容 → 构建 → 章节标题渐显（点击才开始正文打字机）
+                // 场景切换：淡出旧内容 → 背景天气切换 → 构建 → 章节标题渐显（点击才开始正文打字机）
                 storyEl.classList.add('story-fade-out');
                 setTimeout(() => {
+                    // 切换背景天气
+                    document.body.className = 'bg-' + (scene.bg || 'cloudy');
+                    if (scene.bg === 'rain') startRain();
+                    else stopRain();
                     buildStoryDom(scene);
                     storyEl.classList.remove('story-fade-out');
                     storyEl.classList.add('story-fade-in');
