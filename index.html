@@ -294,31 +294,39 @@
             color: #e8b84a;
             font-weight: bold;
             cursor: pointer;
-            border-bottom: 2px dashed #b5432a;
             padding: 0 3px;
             transition: background 0.2s;
         }
         .clue-highlight:hover {
             background: #3a2a1a;
-            border-bottom-color: #e8b84a;
+        }
+        .clue-highlight.collected {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            text-decoration-thickness: 2px;
+        }
+        .clue-highlight.collected:hover {
+            background: #3a2a1a;
         }
         .note-highlight {
             color: #8fd0c0;
             font-weight: bold;
             cursor: pointer;
-            border-bottom: 2px dashed #2f7d6a;
             padding: 0 3px;
             transition: background 0.2s;
         }
         .note-highlight:hover {
             background: #12312a;
-            border-bottom-color: #8fd0c0;
+        }
+        .note-highlight.collected {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            text-decoration-thickness: 2px;
         }
         .note-highlight.locked {
             color: inherit;
             font-weight: normal;
             cursor: default;
-            border-bottom: none;
             padding: 0;
         }
         .note-highlight.locked:hover {
@@ -328,13 +336,16 @@
             color: #d8a8f0;
             font-weight: bold;
             cursor: pointer;
-            border-bottom: 2px dashed #8a5ab0;
             padding: 0 3px;
             transition: background 0.2s;
         }
         .char-highlight:hover {
             background: #2a1a3a;
-            border-bottom-color: #d8a8f0;
+        }
+        .char-highlight.collected {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            text-decoration-thickness: 2px;
         }
         .note-pop {
             position: fixed;
@@ -359,86 +370,18 @@
             font-size: 13px;
             line-height: 1.8;
         }
-        .modal-mask {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 1100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-box {
-            width: 90%;
-            max-width: 680px;
-            max-height: 80vh;
-            background: #1a1613;
-            border: 1px solid #3a332b;
-            border-radius: 14px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        /* 线索选择弹窗：无滚动条，两列网格自适应 */
-        #clueModalMask .modal-box {
-            max-height: none;
-            max-width: 560px;
-        }
-        #clueModalBody {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            overflow: visible;
-        }
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 18px;
-            border-bottom: 1px solid #3a332b;
-            color: #e8decc;
-            font-size: 15px;
-            letter-spacing: 2px;
-            flex-shrink: 0;
-        }
-        .modal-close {
-            background: #2a241d;
-            border: 1px solid #5a4a32;
-            color: #f0c060;
-            padding: 4px 16px;
-            border-radius: 16px;
-            font-size: 12px;
-            letter-spacing: 2px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-        .modal-close:hover {
-            border-color: #d65a3c;
-            color: #faf4ea;
-            background: #d65a3c;
-        }
-        .modal-body {
-            padding: 16px 20px;
-            overflow-y: auto;
-            line-height: 1.9;
-            font-size: 14px;
-            color: #d4c8b8;
-        }
-        .modal-body .hist-line {
+        /* 剧情回顾行（抽屉内） */
+        .hist-line {
             margin-bottom: 10px;
             padding-left: 10px;
             border-left: 2px solid #3a332b;
         }
-        .modal-body .hist-line .hist-who {
+        .hist-line .hist-who {
             font-size: 12px;
             color: #8a7b64;
             margin-bottom: 2px;
         }
-        /* 线索选择弹窗 */
+        /* 线索选择卡片（推理抽屉内，复用自原弹窗） */
         .modal-clue {
             background: #201b16;
             border: 1px solid #3a332b;
@@ -960,6 +903,32 @@
         .reason-title .count {
             color: #f0c060;
         }
+        /* 线索选择区（推理抽屉内，两栏网格） */
+        .clue-pick-title {
+            font-size: 12px;
+            color: #a8977d;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+        .clue-pick-title .count {
+            color: #f0c060;
+        }
+        .clue-pick {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .clue-pick .empty {
+            grid-column: 1 / -1;
+        }
+        .combo-slot-empty-tip {
+            font-size: 12px;
+            color: #6d6048;
+            padding: 6px 0;
+        }
         .toast {
             position: fixed;
             top: 30px;
@@ -1052,7 +1021,6 @@
         <div class="top-bar">
             <div class="game-title">凤尾庄 · <span>暗途</span></div>
             <div class="status-bar">
-                <span class="badge">已填 <span class="num" id="fillCount">0</span>/<span class="num" id="totalSlots">0</span></span>
                 <button class="btn-drawer" data-drawer="reason" data-title="推理">
                     推理 <span class="num" id="reasonCount">0</span>
                 </button>
@@ -1062,7 +1030,9 @@
                 <button class="btn-drawer" data-drawer="char" data-title="人物">
                     人物 <span class="num" id="charCountBadge">0</span>
                 </button>
-                <button class="btn-history" id="historyBtn">回看</button>
+                <button class="btn-drawer" data-drawer="history" data-title="回顾">
+                    回顾
+                </button>
             </div>
         </div>
 
@@ -1085,6 +1055,8 @@
                 <div class="drawer-body">
                     <div class="drawer-sec" id="drawerSecReason">
                         <div class="combo-slots" id="comboSlots"></div>
+                        <div class="clue-pick-title">选择线索 <span class="count" id="cluePickCount">(0)</span></div>
+                        <div class="clue-pick" id="cluePick"></div>
                         <div class="combo-btns">
                             <button class="btn-combine" id="combineBtn" disabled>组合推理</button>
                             <button class="btn-clear" id="clearSelection">清空</button>
@@ -1098,6 +1070,9 @@
                     <div class="drawer-sec" id="drawerSecChar">
                         <div id="charList" style="flex:1; overflow-y:auto;"></div>
                     </div>
+                    <div class="drawer-sec" id="drawerSecHistory">
+                        <div id="historyBody" style="flex:1; overflow-y:auto;"></div>
+                    </div>
                 </div>
             </aside>
         </div>
@@ -1105,32 +1080,10 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- 线索选择弹窗 -->
-    <div class="modal-mask" id="clueModalMask" style="display:none;">
-        <div class="modal-box">
-            <div class="modal-head">
-                <span>选择线索</span>
-                <button class="modal-close" id="clueModalClose">关闭</button>
-            </div>
-            <div class="modal-body" id="clueModalBody"></div>
-        </div>
-    </div>
-
     <!-- 笔记悬浮窗 -->
     <div class="note-pop" id="notePop" style="display:none;">
         <div class="note-pop-title" id="notePopTitle"></div>
         <div class="note-pop-body" id="notePopBody"></div>
-    </div>
-
-    <!-- 剧情回顾弹窗 -->
-    <div class="modal-mask" id="historyMask" style="display:none;">
-        <div class="modal-box">
-            <div class="modal-head">
-                <span>剧情回顾</span>
-                <button class="modal-close" id="historyClose">关闭</button>
-            </div>
-            <div class="modal-body" id="historyBody"></div>
-        </div>
     </div>
 
     <script src="compiler.js"></script>
@@ -1152,7 +1105,6 @@
             allBlocks: [], // 所有可拖动块
             selectedClueIds: [], // 选中的线索块ID（用于组合）
             slotConfigs: [],
-            totalSlots: 0,
         };
 
         // ---------- 数据（内容全部来自 story.js，剧本经 compiler.js 编译） ----------
@@ -1175,8 +1127,6 @@
         const storyHint = document.getElementById('storyHint');
         const clueList = document.getElementById('clueList');
         const charList = document.getElementById('charList');
-        const fillCount = document.getElementById('fillCount');
-        const totalSlots = document.getElementById('totalSlots');
         const reasonCount = document.getElementById('reasonCount');
         const charCountBadge = document.getElementById('charCountBadge');
         const itemList = document.getElementById('itemList');
@@ -1187,14 +1137,10 @@
         const notePop = document.getElementById('notePop');
         const notePopTitle = document.getElementById('notePopTitle');
         const notePopBody = document.getElementById('notePopBody');
-        const historyMask = document.getElementById('historyMask');
         const historyBody = document.getElementById('historyBody');
-        const historyBtn = document.getElementById('historyBtn');
-        const historyClose = document.getElementById('historyClose');
-        const clueModalMask = document.getElementById('clueModalMask');
-        const clueModalBody = document.getElementById('clueModalBody');
-        const clueModalClose = document.getElementById('clueModalClose');
         const comboSlots = document.getElementById('comboSlots');
+        const cluePick = document.getElementById('cluePick');
+        const cluePickCount = document.getElementById('cluePickCount');
         const reasonTitleCount = document.getElementById('reasonTitleCount');
         const drawer = document.getElementById('drawer');
         const drawerTitle = document.getElementById('drawerTitle');
@@ -1203,11 +1149,12 @@
         let toastTimer = null;
         let currentSceneOwner = 'wu';
 
-        // ---------- 抽屉切换（推理 / 物品 / 人物，同时只开一个） ----------
+        // ---------- 抽屉切换（推理 / 物品 / 人物 / 回顾，同时只开一个） ----------
         const DRAWER_SECTIONS = {
             reason: 'drawerSecReason',
             item: 'drawerSecItem',
-            char: 'drawerSecChar'
+            char: 'drawerSecChar',
+            history: 'drawerSecHistory'
         };
         let openDrawer = null;
 
@@ -1229,6 +1176,7 @@
             document.querySelectorAll('.drawer-sec').forEach(s => {
                 s.classList.toggle('active', s.id === DRAWER_SECTIONS[key]);
             });
+            if (key === 'history') renderHistory();
         }
 
         function toggleDrawer(key) {
@@ -1382,10 +1330,11 @@
                     owner: ownerVal
                 });
             }
-            // 解锁后：剧情中对应的高亮词变为可点击
+            // 解锁后：剧情中对应的高亮词变为可点击并划线
             storyDom.forEach(div => {
                 div.querySelectorAll(`.note-highlight[data-note="${id}"]`).forEach(el => {
                     el.classList.remove('locked');
+                    el.classList.add('collected');
                 });
             });
             renderAll();
@@ -1411,14 +1360,11 @@
                     owner: 'all'
                 });
             }
-            // 人物框加入后：剧情中对应的高亮恢复为普通文字
+            // 人物框加入后：剧情中对应的高亮划线标记
             storyDom.forEach(div => {
                 div.querySelectorAll(`.char-highlight[data-char="${id}"]`).forEach(el => {
-                    const text = el.textContent;
-                    const p = el.parentNode;
-                    const tn = document.createTextNode(text);
-                    p.replaceChild(tn, el);
-                    p.normalize();
+                    el.classList.add('collected');
+                    el.removeEventListener('click', handleCharClick);
                 });
             });
             renderAll();
@@ -1484,7 +1430,6 @@
         function clearSelection() {
             state.selectedClueIds = [];
             renderClues();
-            if (clueModalMask.style.display !== 'none') renderClueModal();
         }
 
         // ---------- 渲染引擎 ----------
@@ -1528,7 +1473,6 @@
             }
 
             state.slotConfigs = scene.slotConfigs || [];
-            state.totalSlots = state.slotConfigs.length;
 
             if (storySceneId !== state.scene) {
                 // 场景切换：淡出旧内容 → 背景天气切换 → 构建 → 章节标题渐显（点击才开始正文打字机）
@@ -1547,8 +1491,8 @@
                     }, 900);
                 }, 320);
             } else {
-                // 场景未变：仅更新已显示行（收集的高亮移除、已填槽恢复）
-                removeCollectedHighlights(storyEl);
+                // 场景未变：仅更新已显示行（已收集划线、已填槽恢复）
+                markCollectedHighlights(storyEl);
                 restoreSlots(storyEl);
             }
             updateCounts();
@@ -1561,7 +1505,7 @@
             storyDom = lines.map(html => {
                 const div = document.createElement('div');
                 div.innerHTML = html;
-                removeCollectedHighlights(div);
+                markCollectedHighlights(div);
                 restoreSlots(div);
                 // 绑定线索/物品高亮点击
                 div.querySelectorAll('.clue-highlight').forEach(el => {
@@ -1575,16 +1519,14 @@
                     el.removeEventListener('click', handleNoteClick);
                     el.addEventListener('click', handleNoteClick);
                     if (!unlocked) el.classList.add('locked');
+                    else el.classList.add('collected');
                 });
-                // 人物高亮：未加入人物框时高亮可点击，已加入则恢复普通文字
+                // 人物高亮：未加入人物框时高亮可点击，已加入则划线
                 div.querySelectorAll('.char-highlight').forEach(el => {
                     const charId = el.dataset.char;
                     if (state.characters.includes(charId)) {
-                        const text = el.textContent;
-                        const p = el.parentNode;
-                        const tn = document.createTextNode(text);
-                        p.replaceChild(tn, el);
-                        p.normalize();
+                        el.classList.add('collected');
+                        el.removeEventListener('click', handleCharClick);
                     } else {
                         el.removeEventListener('click', handleCharClick);
                         el.addEventListener('click', handleCharClick);
@@ -1648,12 +1590,9 @@
             const charId = el.dataset.char;
             if (state.characters.includes(charId)) return;
             if (unlockChar(charId)) {
-                // 立即移除该高亮（恢复普通文字）
-                const text = el.textContent;
-                const p = el.parentNode;
-                const tn = document.createTextNode(text);
-                p.replaceChild(tn, el);
-                p.normalize();
+                // 立即划线标记
+                el.classList.add('collected');
+                el.removeEventListener('click', handleCharClick);
             }
         }
 
@@ -1748,45 +1687,34 @@
             return s ? s.textContent : '';
         }
 
-        // 打开剧情回顾
-        function openHistory() {
+        // 渲染剧情回顾（抽屉内）
+        function renderHistory() {
             const body = historyBody;
             body.innerHTML = '';
             if (historyLog.length === 0) {
                 body.innerHTML = '<div class="empty">暂无剧情记录</div>';
-            } else {
-                historyLog.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'hist-line';
-                    const div2 = document.createElement('div');
-                    div2.innerHTML = item.html;
-                    // 去除交互元素，仅留文字
-                    div2.querySelectorAll('.slot').forEach(sl => {
-                        sl.classList.remove('filled');
-                        sl.innerHTML = '<span class="placeholder">______</span>';
-                    });
-                    div.appendChild(div2);
-                    body.appendChild(div);
-                });
+                return;
             }
-            historyMask.style.display = 'flex';
+            historyLog.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'hist-line';
+                const div2 = document.createElement('div');
+                div2.innerHTML = item.html;
+                // 去除交互元素，仅留文字
+                div2.querySelectorAll('.slot').forEach(sl => {
+                    sl.classList.remove('filled');
+                    sl.innerHTML = '<span class="placeholder">______</span>';
+                });
+                div.appendChild(div2);
+                body.appendChild(div);
+            });
         }
 
-        function closeHistory() {
-            historyMask.style.display = 'none';
-        }
-
-        // 移除已收集线索/物品的高亮
-        function removeCollectedHighlights(root) {
+        // 已收集线索/物品的高亮：改为同色划线（书籍划线感），不替换为纯文本
+        function markCollectedHighlights(root) {
             state.clues.concat(state.items).forEach(c => {
                 const els = root.querySelectorAll(`.clue-highlight[data-clue="${c.id}"]`);
-                els.forEach(el => {
-                    const text = el.textContent;
-                    const parent = el.parentNode;
-                    const textNode = document.createTextNode(text);
-                    parent.replaceChild(textNode, el);
-                    parent.normalize();
-                });
+                els.forEach(el => el.classList.add('collected'));
             });
         }
 
@@ -1836,18 +1764,11 @@
             }
         });
 
-        // 剧情回顾
-        historyBtn.addEventListener('click', openHistory);
-        historyClose.addEventListener('click', closeHistory);
-        historyMask.addEventListener('click', function(e) {
-            if (e.target === historyMask) closeHistory();
-        });
-
         function renderClues() {
-            // 组合槽位：按选中线索动态生成，可多于 2 条
+            // 组合槽位：已选中的线索块（点击取消选择）
             const sel = state.selectedClueIds;
             let slotHtml = '';
-            sel.forEach((bid, i) => {
+            sel.forEach(bid => {
                 const block = state.allBlocks.find(b => b.id === bid);
                 if (block) {
                     slotHtml += `
@@ -1858,22 +1779,43 @@
                     `;
                 }
             });
-            // 末尾加号槽位：添加线索
-            slotHtml += `
-                <div class="combo-slot" id="comboAddSlot">
-                    <span class="combo-slot-empty">＋ 添加</span>
-                </div>
-            `;
+            if (sel.length === 0) {
+                slotHtml = '<div class="combo-slot-empty-tip">点击下方线索加入组合</div>';
+            }
             comboSlots.innerHTML = slotHtml;
             comboSlots.querySelectorAll('.combo-slot.filled').forEach(el => {
                 el.addEventListener('click', function() {
                     toggleSelectClue(this.dataset.block);
                 });
             });
-            document.getElementById('comboAddSlot').addEventListener('click', function() {
-                renderClueModal();
-                clueModalMask.style.display = 'flex';
+
+            // 线索选择列表：全部可用线索，点击选中/取消（整合原弹窗）
+            const pickItems = state.allBlocks.filter(b =>
+                b.type === 'clue' && !state.usedBlockIds.has(b.id));
+            if (pickItems.length === 0) {
+                cluePick.innerHTML = '<div class="empty">暂无可用线索，请先点击剧情中的高亮词收集</div>';
+            } else {
+                cluePick.innerHTML = pickItems.map(block => {
+                    const isSelected = sel.includes(block.id);
+                    const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
+                    const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
+                    return `
+                        <div class="modal-clue ${isSelected ? 'selected' : ''}" data-block="${block.id}">
+                            <div class="modal-clue-name">${block.label}
+                                <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                            </div>
+                            <div class="modal-clue-desc">${block.detail}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            cluePick.querySelectorAll('.modal-clue').forEach(el => {
+                el.addEventListener('click', function() {
+                    toggleSelectClue(this.dataset.block);
+                    renderClues();
+                });
             });
+            cluePickCount.textContent = `(${pickItems.length})`;
 
             // 推理结果列表（reason 块，可拖拽填空）
             let items = state.allBlocks.filter(b =>
@@ -1897,42 +1839,6 @@
             reasonTitleCount.textContent = `(${items.length})`;
 
             combineBtn.disabled = sel.length < 2;
-        }
-
-        // 线索选择弹窗：渲染可用线索（可多选，不限制数量）
-        function renderClueModal() {
-            const items = state.allBlocks.filter(b =>
-                b.type === 'clue' && !state.usedBlockIds.has(b.id));
-            if (items.length === 0) {
-                clueModalBody.innerHTML = '<div class="empty">暂无可用线索，请先点击剧情中的高亮词收集</div>';
-                return;
-            }
-            clueModalBody.innerHTML = items.map(block => {
-                const isSelected = state.selectedClueIds.includes(block.id);
-                const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
-                const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
-                return `
-                    <div class="modal-clue ${isSelected ? 'selected' : ''}" data-block="${block.id}">
-                        <div class="modal-clue-name">${block.label}
-                            <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
-                        </div>
-                        <div class="modal-clue-desc">${block.detail}</div>
-                    </div>
-                `;
-            }).join('');
-            clueModalBody.querySelectorAll('.modal-clue').forEach(el => {
-                el.addEventListener('click', function() {
-                    toggleSelectClue(this.dataset.block);
-                    renderClueModal();
-                    renderClues();
-                });
-            });
-        }
-
-        function handleClueSelect(e) {
-            const el = e.currentTarget;
-            const blockId = el.dataset.block;
-            toggleSelectClue(blockId);
         }
 
         function renderItems() {
@@ -2014,14 +1920,8 @@
                 name = DATA.clues[id].name;
             }
             if (added) {
-                // 移除该高亮（可能已被重渲染移除，需容错）
-                const parent = el.parentNode;
-                if (parent) {
-                    const text = el.textContent;
-                    const textNode = document.createTextNode(text);
-                    parent.replaceChild(textNode, el);
-                    parent.normalize();
-                }
+                // 收集成功：立即划线标记（书籍划线感）
+                el.classList.add('collected');
             }
         }
 
@@ -2054,10 +1954,6 @@
         }
 
         function updateCounts() {
-            const total = state.slotConfigs.length;
-            const filled = state.slotConfigs.filter(c => state.usedBlockIds.has(c.expected)).length;
-            fillCount.textContent = filled;
-            totalSlots.textContent = total || state.totalSlots;
             const usedReason = state.allBlocks.filter(b => b.type === 'reason' && state.usedBlockIds.has(b.id));
             reasonCount.textContent = usedReason.length;
         }
@@ -2079,15 +1975,9 @@
             }, 400);
         }
 
-        // ---------- 组合按钮 / 线索弹窗 ----------
+        // ---------- 组合按钮 / 线索选择 ----------
         combineBtn.addEventListener('click', performCombine);
         clearSelectionBtn.addEventListener('click', clearSelection);
-        clueModalClose.addEventListener('click', function() {
-            clueModalMask.style.display = 'none';
-        });
-        clueModalMask.addEventListener('click', function(e) {
-            if (e.target === clueModalMask) clueModalMask.style.display = 'none';
-        });
 
         // ---------- 拖拽事件委托（核心修复） ----------
         app.addEventListener('dragstart', function(e) {
