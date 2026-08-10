@@ -177,6 +177,7 @@
     <select id="sceneGoto" title="完成后跳转"></select>
     <span class="tb-right">
         <span id="saveState">就绪</span>
+        <button id="btnSave" title="保存到本地">保存</button>
         <button id="btnSceneAdd" title="新建场景">+ 场景</button>
         <button id="btnSceneDelete" class="danger" title="删除当前场景">删场景</button>
         <button id="btnValidate">校验</button>
@@ -256,19 +257,33 @@
         } catch (e) { /* ignore */ }
         ED = defaultED();
     }
+    // ---------- 保存 ----------
+    let dirty = false;
     function saveLocal() {
         try {
             localStorage.setItem(LS_KEY, JSON.stringify(ED));
-            $('saveState').textContent = '已保存 ' + new Date().toLocaleTimeString();
+            dirty = false;
+            $('saveState').textContent = '✓ 已保存 ' + new Date().toLocaleTimeString();
         } catch (e) {
-            $('saveState').textContent = '保存失败';
+            $('saveState').textContent = '保存失败（存储不可用）';
         }
     }
     function markDirty() {
-        $('saveState').textContent = '编辑中…';
+        dirty = true;
+        $('saveState').textContent = '● 有未保存修改';
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(function () { saveLocal(); refreshEntries(); validate(); }, 500);
     }
+    $('btnSave').addEventListener('click', function () {
+        saveLocal();
+        $('saveState').textContent = '✓ 已手动保存 ' + new Date().toLocaleTimeString();
+    });
+    window.addEventListener('beforeunload', function (e) {
+        if (dirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 
     // ---------- 场景 ----------
     function getScene() {
