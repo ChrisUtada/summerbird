@@ -385,6 +385,39 @@
             line-height: 1.8;
         }
         /* 剧情回顾行（抽屉内） */
+        .hist-scene {
+            margin-bottom: 10px;
+        }
+        .hist-scene-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 10px;
+            background: #241e17;
+            border: 1px solid #4a4034;
+            border-left: 3px solid #f0c060;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            font-size: 13px;
+            color: #e8decc;
+        }
+        .hist-scene-head:hover {
+            border-color: #d65a3c;
+            background: #322a21;
+        }
+        .hist-scene-title {
+            letter-spacing: 1px;
+        }
+        .hist-scene-go {
+            font-size: 11px;
+            color: #f0c060;
+            flex-shrink: 0;
+        }
+        .hist-scene-body {
+            padding: 6px 0 2px 6px;
+        }
         .hist-line {
             margin-bottom: 10px;
             padding-left: 10px;
@@ -394,6 +427,21 @@
             font-size: 12px;
             color: #8a7b64;
             margin-bottom: 2px;
+        }
+        /* 书签跳转：章节标题高亮闪烁 */
+        .chapter-title.jump-flash {
+            animation: jumpFlash 1.6s ease;
+        }
+        @keyframes jumpFlash {
+            0%,
+            100% {
+                color: #f0c060;
+                background: transparent;
+            }
+            40% {
+                color: #fff3d0;
+                background: rgba(240, 192, 96, 0.18);
+            }
         }
         /* 线索选择卡片（与推理结果卡片同款式，仅点击选择用） */
         .clue-item {
@@ -1460,13 +1508,13 @@
             storyEl.innerHTML = '';
             lineIndex = 0;
             blocked = false;
-            historyLog = [];
+            // 注意：historyLog 跨场景累积，用于回顾书签（jumpToScene 时清理对应场景旧记录）
             stopTyping();
 
             // 第一行作为章节标题直接显示（非打字机）
             const title = storyDom[0];
             title.classList.add('chapter-title');
-            historyLog.push({ html: title.innerHTML, who: detectSpeaker(title) });
+            historyLog.push({ html: title.innerHTML, who: detectSpeaker(title), sceneId: state.scene });
             lineIndex = 1;
             storyEl.appendChild(title);
 
@@ -1580,7 +1628,7 @@
                 lineIndex = 0;
             }
             const line = storyDom[lineIndex];
-            historyLog.push({ html: line.innerHTML, who: detectSpeaker(line) });
+            historyLog.push({ html: line.innerHTML, who: detectSpeaker(line), sceneId: state.scene });
             lineIndex++;
             storyEl.appendChild(line);
             // 按实际高度裁剪：超出剧情框高度的最旧行移除，保留底部留白
@@ -1605,7 +1653,7 @@
             return s ? s.textContent : '';
         }
 
-        // 渲染剧情回顾（抽屉内）
+        // 渲染剧情回顾（抽屉内，按场景分组，场景头为书签锚点）
         function renderHistory() {
             const body = historyBody;
             body.innerHTML = '';
@@ -1613,19 +1661,63 @@
                 body.innerHTML = '<div class="empty">暂无剧情记录</div>';
                 return;
             }
+            // 按场景分组（保留进入顺序）
+            const groups = [];
             historyLog.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'hist-line';
-                const div2 = document.createElement('div');
-                div2.innerHTML = item.html;
-                // 去除交互元素，仅留文字
-                div2.querySelectorAll('.slot').forEach(sl => {
-                    sl.classList.remove('filled');
-                    sl.innerHTML = '<span class="placeholder">______</span>';
-                });
-                div.appendChild(div2);
-                body.appendChild(div);
+                const last = groups[groups.length - 1];
+                if (!last || last.sceneId !== item.sceneId) {
+                    groups.push({ sceneId: item.sceneId, title: extractSceneTitle(item.html), items: [] });
+                }
+                groups[groups.length - 1].items.push(item);
             });
+            groups.forEach(group => {
+                const sec = document.createElement('div');
+                sec.className = 'hist-scene';
+                const head = document.createElement('div');
+                head.className = 'hist-scene-head';
+                head.innerHTML = `<span class="hist-scene-title">${group.title}</span><span class="hist-scene-go">跳转 ▸</span>`;
+                head.addEventListener('click', function() {
+                    jumpToScene(group.sceneId);
+                });
+                sec.appendChild(head);
+                const itemsWrap = document.createElement('div');
+                itemsWrap.className = 'hist-scene-body';
+                group.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'hist-line';
+                    const div2 = document.createElement('div');
+                    div2.innerHTML = item.html;
+                    // 去除交互元素，仅留文字
+                    div2.querySelectorAll('.slot').forEach(sl => {
+                        sl.classList.remove('filled');
+                        sl.innerHTML = '<span class="placeholder">______</span>';
+                    });
+                    div.appendChild(div2);
+                    itemsWrap.appendChild(div);
+                });
+                sec.appendChild(itemsWrap);
+                body.appendChild(sec);
+            });
+        }
+
+        // 从章节标题行提取场景名（✦ 章名 ✦）
+        function extractSceneTitle(html) {
+            const m = String(html).match(/✦\s*([^✦]+)\s*✦/);
+            return m ? m[1].trim() : '未命名章节';
+        }
+
+        // 书签跳转：跳到已完成场景的章节头
+        function jumpToScene(sceneId) {
+            if (!SCENES[sceneId]) return;
+            closeDrawer();
+            // 清理该场景旧记录，跳转后重新累积
+            historyLog = historyLog.filter(item => item.sceneId !== sceneId);
+            storySceneId = null; // 强制场景重建（即使是当前场景也重显标题）
+            loadScene(sceneId);
+            setTimeout(() => {
+                const t = storyEl.querySelector('.chapter-title');
+                if (t) t.classList.add('jump-flash');
+            }, 700);
         }
 
         // 已收集线索/物品的高亮：改为同色划线（书籍划线感），不替换为纯文本
