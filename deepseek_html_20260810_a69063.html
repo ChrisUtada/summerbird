@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>凤尾庄 · 暗途 — 完整修复版</title>
+    <style>
+        /* 完整样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0b0a0a;
+            color: #ddd2c2;
+            font-family: 'Georgia', 'SimSun', 'Songti SC', serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 16px;
+        }
+        #app {
+            width: 100%;
+            max-width: 1100px;
+            background: #161211;
+            border: 1px solid #3a332b;
+            border-radius: 18px;
+            padding: 20px 24px 18px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            min-height: 700px;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3a332b;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .game-title {
+            font-size: 20px;
+            letter-spacing: 6px;
+            color: #bfae95;
+        }
+        .game-title span {
+            color: #d65a3c;
+            font-weight: bold;
+        }
+        .status-bar {
+            font-size: 13px;
+            color: #a8977d;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .status-bar .badge {
+            background: #1f1a16;
+            padding: 2px 12px;
+            border-radius: 20px;
+            border: 1px solid #3a322a;
+            color: #c2b4a0;
+        }
+        .status-bar .badge .num {
+            color: #f0c060;
+        }
+        .btn-history {
+            background: #2a241d;
+            border: 1px solid #4a4034;
+            color: #d8cbb4;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-history:hover {
+            border-color: #d65a3c;
+            color: #f0e6d4;
+        }
+        .main-layout {
+            display: flex;
+            gap: 16px;
+            flex: 1;
+            min-height: 500px;
+        }
+        .col-left {
+            flex: 1.2;
+            min-width: 180px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .story-column {
+            flex: 2.4;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .col-right {
+            flex: 1.2;
+            min-width: 160px;
+            max-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .story-area {
+            flex: 1;
+            background: #1a1613;
+            border-radius: 12px;
+            border: 1px solid #3a332b;
+            padding: 18px 20px 40px;
+            overflow: hidden;
+            max-height: 540px;
+            min-height: 350px;
+            line-height: 1.9;
+            font-size: 15px;
+            color: #e6dccb;
+            position: relative;
+            cursor: pointer;
+            transition: opacity 0.32s ease;
+        }
+        .story-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #8d7c64;
+            font-size: 12px;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+        .story-area.story-fade-out {
+            opacity: 0;
+        }
+        .story-area.story-fade-in {
+            animation: storyFadeIn 0.5s ease;
+        }
+        @keyframes storyFadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        .chapter-title {
+            text-align: center;
+            font-size: 19px;
+            color: #f0c060;
+            letter-spacing: 5px;
+            margin: 14px 0 20px;
+            border-bottom: 1px solid #3a332b;
+            padding-bottom: 12px;
+        }
+        .story-area::-webkit-scrollbar {
+            width: 4px;
+        }
+        .story-area::-webkit-scrollbar-track {
+            background: #12100e;
+        }
+        .story-area::-webkit-scrollbar-thumb {
+            background: #3a322a;
+            border-radius: 4px;
+        }
+        .story-area .narr-line {
+            color: #b9ab94;
+            margin-bottom: 8px;
+        }
+        .story-area .divider {
+            border: none;
+            border-top: 1px solid #3a332b;
+            margin: 12px 0;
+        }
+        .story-area .msg {
+            margin-bottom: 8px;
+        }
+        .story-area .msg .speaker {
+            font-weight: bold;
+            margin-right: 6px;
+        }
+        .story-area .msg .speaker.wu {
+            color: #a8ccdd;
+        }
+        .story-area .msg .speaker.shan {
+            color: #d8b48e;
+        }
+        .story-area .msg .speaker.old {
+            color: #c0b090;
+        }
+        .story-area .msg .speaker.zhang {
+            color: #cfbd90;
+        }
+        .story-area .msg .text {
+            display: inline;
+        }
+        .clue-highlight {
+            color: #e8b84a;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 2px dashed #b5432a;
+            padding: 0 3px;
+            transition: background 0.2s;
+        }
+        .clue-highlight:hover {
+            background: #3a2a1a;
+            border-bottom-color: #e8b84a;
+        }
+        .note-highlight {
+            color: #8fd0c0;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 2px dashed #2f7d6a;
+            padding: 0 3px;
+            transition: background 0.2s;
+        }
+        .note-highlight:hover {
+            background: #12312a;
+            border-bottom-color: #8fd0c0;
+        }
+        .note-highlight.locked {
+            color: inherit;
+            font-weight: normal;
+            cursor: default;
+            border-bottom: none;
+            padding: 0;
+        }
+        .note-highlight.locked:hover {
+            background: none;
+        }
+        .char-highlight {
+            color: #d8a8f0;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 2px dashed #8a5ab0;
+            padding: 0 3px;
+            transition: background 0.2s;
+        }
+        .char-highlight:hover {
+            background: #2a1a3a;
+            border-bottom-color: #d8a8f0;
+        }
+        .note-pop {
+            position: fixed;
+            z-index: 1200;
+            max-width: 320px;
+            background: #1d1a14;
+            border: 1px solid #2f7d6a;
+            border-radius: 10px;
+            padding: 10px 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+        .note-pop .note-pop-title {
+            color: #8fd0c0;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #2a4a40;
+        }
+        .note-pop .note-pop-body {
+            color: #d8ccb8;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-box {
+            width: 90%;
+            max-width: 680px;
+            max-height: 80vh;
+            background: #1a1613;
+            border: 1px solid #3a332b;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        /* 线索选择弹窗：无滚动条，两列网格自适应 */
+        #clueModalMask .modal-box {
+            max-height: none;
+            max-width: 560px;
+        }
+        #clueModalBody {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            overflow: visible;
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px;
+            border-bottom: 1px solid #3a332b;
+            color: #e8decc;
+            font-size: 15px;
+            letter-spacing: 2px;
+            flex-shrink: 0;
+        }
+        .modal-body {
+            padding: 16px 20px;
+            overflow-y: auto;
+            line-height: 1.9;
+            font-size: 14px;
+            color: #d4c8b8;
+        }
+        .modal-body .hist-line {
+            margin-bottom: 10px;
+            padding-left: 10px;
+            border-left: 2px solid #3a332b;
+        }
+        .modal-body .hist-line .hist-who {
+            font-size: 12px;
+            color: #8a7b64;
+            margin-bottom: 2px;
+        }
+        /* 线索选择弹窗 */
+        .modal-clue {
+            background: #201b16;
+            border: 1px solid #3a332b;
+            border-left: 3px solid #8fae74;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-clue:hover {
+            border-color: #d65a3c;
+            background: #2a241d;
+        }
+        .modal-clue.selected {
+            border-color: #f0c060;
+            border-left-color: #f0c060;
+            background: #3a2e14;
+        }
+        .modal-clue .modal-clue-name {
+            font-size: 14px;
+            color: #e8decc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal-clue .modal-clue-desc {
+            font-size: 12px;
+            color: #a39680;
+            line-height: 1.6;
+            margin-top: 3px;
+        }
+        .slot {
+            display: inline-block;
+            min-width: 100px;
+            min-height: 28px;
+            border-bottom: 3px dashed #5a7050;
+            margin: 0 4px;
+            padding: 0 6px;
+            color: #93a980;
+            font-size: 14px;
+            vertical-align: bottom;
+            transition: all 0.3s;
+            background: rgba(30, 44, 30, 0.35);
+            border-radius: 0 0 4px 4px;
+            cursor: default;
+        }
+        .slot .placeholder {
+            color: #6d8058;
+            font-size: 12px;
+        }
+        .slot.filled {
+            border-bottom: 3px solid #e8b84a;
+            color: #e8b84a;
+            font-style: normal;
+            background: rgba(232, 184, 74, 0.08);
+        }
+        .slot .slot-content {
+            display: inline-block;
+        }
+        .slot.drag-over {
+            border-bottom-color: #b5432a;
+            background: rgba(181, 67, 42, 0.2);
+        }
+        .slot.correct-flash {
+            animation: flashGreen 0.6s ease;
+        }
+        @keyframes flashGreen {
+            0%,
+            100% {
+                background: rgba(232, 184, 74, 0.08);
+            }
+            50% {
+                background: rgba(74, 200, 100, 0.25);
+            }
+        }
+        .slot.wrong-flash {
+            animation: flashRed 0.5s ease;
+        }
+        @keyframes flashRed {
+            0%,
+            100% {
+                background: rgba(20, 30, 20, 0.25);
+            }
+            50% {
+                background: rgba(200, 50, 50, 0.25);
+            }
+        }
+        .panel-column {
+            flex: 1;
+            min-width: 180px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .panel {
+            display: flex;
+            background: #1a1613;
+            border: 1px solid #3a332b;
+            border-radius: 12px;
+            padding: 12px 14px;
+            flex: 1;
+            min-height: 480px;
+            flex-direction: column;
+        }
+        .panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .panel::-webkit-scrollbar-track {
+            background: #12100e;
+        }
+        .panel::-webkit-scrollbar-thumb {
+            background: #3a322a;
+            border-radius: 4px;
+        }
+        .panel .sec-title {
+            font-size: 13px;
+            color: #d65a3c;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #3a332b;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .panel .sec-title .count {
+            color: #9a8b72;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .filter-tabs button {
+            background: #241f1a;
+            border: 1px solid #3a332b;
+            color: #a8977d;
+            padding: 3px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .filter-tabs button:hover {
+            border-color: #5a4a32;
+            color: #d8cbb4;
+        }
+        .filter-tabs button.active {
+            background: #d65a3c;
+            border-color: #d65a3c;
+            color: #faf4ea;
+        }
+        .filter-tabs button .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .filter-tabs button .dot.wu {
+            background: #8ab0c0;
+        }
+        .filter-tabs button .dot.shan {
+            background: #c0a080;
+        }
+        .panel .empty {
+            color: #8a7b64;
+            font-size: 13px;
+            padding: 10px 0;
+            text-align: center;
+        }
+        .drag-block {
+            background: #262019;
+            border: 1px solid #4a4034;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #efe6d6;
+            cursor: grab;
+            transition: all 0.2s;
+            user-select: none;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 10px;
+        }
+        .drag-block:hover {
+            border-color: #d65a3c;
+            background: #322a21;
+        }
+        .drag-block:active {
+            cursor: grabbing;
+        }
+        .drag-block.dragging {
+            opacity: 0.4;
+        }
+        .drag-block .block-label {
+            font-size: 13px;
+            color: #c2ae8c;
+            margin-right: 2px;
+        }
+        .drag-block .block-type {
+            font-size: 12px;
+            color: #9cc080;
+            border: 1px solid #3c5344;
+            padding: 0 8px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
+        .drag-block .block-detail {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #c0b29c;
+            width: 100%;
+            padding-left: 4px;
+            margin-top: 4px;
+        }
+        .drag-block .owner-tag {
+            font-size: 12px;
+            padding: 0 8px;
+            border-radius: 10px;
+            background: #3a322a;
+            color: #b3a287;
+        }
+        .drag-block .owner-tag.wu {
+            background: #1e3038;
+            color: #a8ccdd;
+            border: 1px solid #3a5a68;
+        }
+        .drag-block .owner-tag.shan {
+            background: #382a18;
+            color: #d8b48e;
+            border: 1px solid #68502c;
+        }
+        .drag-block .owner-tag.all {
+            background: #2c2620;
+            color: #c9bb9f;
+            border: 1px solid #4a4034;
+        }
+        .drag-block.used {
+            opacity: 0.25;
+            cursor: default;
+            border-color: #1a1a1a;
+            pointer-events: none;
+        }
+        .drag-block.selectable {
+            cursor: pointer;
+        }
+        .drag-block.selected {
+            border-color: #f0c060;
+            background: #3a2e14;
+        }
+        .char-card {
+            background: #211c17;
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-left: 3px solid #d65a3c;
+        }
+        .char-card .cname {
+            color: #e8decc;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .char-card .crole {
+            color: #9a8b72;
+            font-size: 11px;
+            margin-left: 6px;
+        }
+        .char-card .cdesc {
+            color: #b3a58f;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .char-card .cinfo {
+            color: #94856e;
+            font-size: 11px;
+            margin-top: 1px;
+        }
+        .char-card .unlock-story {
+            color: #f0c060;
+            font-size: 12px;
+            margin-top: 3px;
+            padding: 3px 8px;
+            background: #2a2210;
+            border-radius: 4px;
+            border-left: 2px solid #f0c060;
+        }
+        .note-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #262019;
+        }
+        .note-item .note-title {
+            color: #e8decc;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        .note-item .note-title:hover {
+            color: #f0c060;
+        }
+        .note-item .note-detail {
+            display: none;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #c0b29c;
+            padding: 6px 10px;
+            background: #211c17;
+            border-radius: 6px;
+            margin-top: 4px;
+            border-left: 2px solid #5a7050;
+        }
+        .note-item .note-detail.open {
+            display: block;
+        }
+        .note-item .note-toggle {
+            color: #9a8b72;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+        .combine-area {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2a2420;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .combine-area .info {
+            font-size: 12px;
+            color: #a8977d;
+            flex: 1;
+        }
+        .combine-area .btn-combine {
+            background: #d65a3c;
+            border: none;
+            color: #faf4ea;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .combine-area .btn-combine:hover {
+            background: #e06a48;
+        }
+        .combine-area .btn-combine:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .combine-area .btn-clear {
+            background: #2a2420;
+            border: 1px solid #4a4034;
+            color: #b3a287;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .combine-area .btn-clear:hover {
+            border-color: #d65a3c;
+            color: #e8decc;
+        }
+        /* 推理框：组合槽位 */
+        .combo-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            flex-shrink: 0;
+            max-height: 130px;
+            overflow-y: auto;
+        }
+        .combo-slot {
+            flex: 1 1 40%;
+            min-width: 90px;
+            min-height: 44px;
+            background: #12100e;
+            border: 2px dashed #4a4034;
+            border-radius: 10px;
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            overflow: hidden;
+            position: relative;
+        }
+        .combo-slot:hover {
+            border-color: #d65a3c;
+        }
+        .combo-slot.filled {
+            border-style: solid;
+            border-color: #f0c060;
+            background: rgba(240, 192, 96, 0.08);
+            color: #f0c060;
+        }
+        .combo-slot .combo-slot-empty {
+            color: #6d6048;
+            font-size: 12px;
+        }
+        .combo-slot .combo-slot-x {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            font-size: 11px;
+            color: #8a7b64;
+            opacity: 0.7;
+        }
+        .combo-slot.filled:hover .combo-slot-x {
+            color: #d65a3c;
+            opacity: 1;
+        }
+        .combo-btns {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
+        .combo-btns .btn-combine {
+            flex: 1;
+            background: #d65a3c;
+            border: none;
+            color: #faf4ea;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .combo-btns .btn-combine:hover {
+            background: #e06a48;
+        }
+        .combo-btns .btn-combine:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .combo-btns .btn-clear {
+            background: #2a2420;
+            border: 1px solid #4a4034;
+            color: #b3a287;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .combo-btns .btn-clear:hover {
+            border-color: #d65a3c;
+            color: #e8decc;
+        }
+        .reason-title {
+            font-size: 12px;
+            color: #a8977d;
+            border-top: 1px solid #3a332b;
+            margin-top: 8px;
+            padding-top: 6px;
+            flex-shrink: 0;
+        }
+        .reason-title .count {
+            color: #f0c060;
+        }
+        /* 底部物品横向滚动条 */
+        .item-strip {
+            margin-top: 14px;
+            background: #1a1613;
+            border: 1px solid #3a332b;
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+        .item-strip-head {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            font-size: 13px;
+            color: #bfae95;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        .item-strip-head .count {
+            color: #f0c060;
+        }
+        .item-strip-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 4px;
+        }
+        .item-strip-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        .item-strip-scroll::-webkit-scrollbar-thumb {
+            background: #3a322a;
+            border-radius: 4px;
+        }
+        .item-strip .drag-block {
+            min-width: 230px;
+            max-width: 250px;
+            flex-shrink: 0;
+            margin-bottom: 0;
+        }
+        .item-strip .empty {
+            font-style: normal;
+            color: #6d6048;
+            padding: 8px 0;
+        }
+        .toast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f1a0a;
+            border: 1px solid #e8b84a;
+            border-radius: 12px;
+            padding: 12px 28px;
+            color: #e8b84a;
+            font-size: 15px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.error {
+            border-color: #b5432a;
+            color: #d07060;
+        }
+        .toast.success {
+            border-color: #6aaa6a;
+            color: #8aca8a;
+        }
+        /* 宽屏（≥1000px）：三栏展开 */
+        @media (min-width: 1000px) {
+            #app {
+                max-width: 1280px;
+            }
+            .panel {
+                flex: 1;
+                min-height: 0;
+                max-height: none;
+            }
+            .col-left {
+                max-width: 320px;
+            }
+            .col-right {
+                max-width: 300px;
+            }
+        }
+        /* 窄屏（<1000px）：单列堆叠 */
+        @media (max-width: 999px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .story-column {
+                order: -1;
+            }
+            .col-left,
+            .col-right {
+                max-width: 100%;
+            }
+            .panel {
+                min-height: 320px;
+            }
+        }
+        @media (max-width: 750px) {
+            #app {
+                padding: 12px 14px;
+            }
+            .story-area {
+                max-height: 300px;
+                min-height: 200px;
+            }
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            .game-title {
+                text-align: center;
+            }
+            .status-bar {
+                justify-content: center;
+            }
+        }
+        @media (max-width: 450px) {
+            .slot {
+                min-width: 70px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <!-- 顶栏 -->
+        <div class="top-bar">
+            <div class="game-title">凤尾庄 · <span>暗途</span></div>
+            <div class="status-bar">
+                <span class="badge">已填 <span class="num" id="fillCount">0</span>/<span class="num" id="totalSlots">0</span></span>
+                <span class="badge">推理 <span class="num" id="reasonCount">0</span></span>
+                <span class="badge">物品 <span class="num" id="itemCountBadge">0</span></span>
+                <span class="badge">人物 <span class="num" id="charCountBadge">0</span></span>
+                <button class="btn-history" id="historyBtn">回看</button>
+            </div>
+        </div>
+
+        <!-- 主布局 -->
+        <div class="main-layout">
+            <!-- 左栏：推理框 -->
+            <div class="panel-column col-left">
+                <div class="panel" id="cluePanel">
+                    <div class="sec-title">推理 <span class="count" id="clueCountLabel">(0)</span></div>
+                    <!-- 组合槽位（数量动态） -->
+                    <div class="combo-slots" id="comboSlots"></div>
+                    <div class="combo-btns">
+                        <button class="btn-combine" id="combineBtn" disabled>组合推理</button>
+                        <button class="btn-clear" id="openClueModal">选择线索</button>
+                        <button class="btn-clear" id="clearSelection">清空</button>
+                    </div>
+                    <!-- 推理结果 -->
+                    <div class="reason-title">推理结果 <span class="count" id="reasonTitleCount">(0)</span></div>
+                    <div id="clueList" style="flex:1; overflow-y:auto;"></div>
+                </div>
+            </div>
+
+            <!-- 中栏：剧情 -->
+            <div class="story-column">
+                <div class="story-area" id="storyArea">
+                    <div class="narr-line">✦ 点击高亮词收集线索与物品 · 点击蓝绿词查看笔记 · 点击空白处推进剧情 ✦</div>
+                    <div class="story-hint" id="storyHint">▾ 点击空白处推进剧情</div>
+                </div>
+            </div>
+
+            <!-- 右栏：人物 -->
+            <div class="panel-column col-right">
+                <div class="panel" id="charPanel">
+                    <div class="sec-title">人物 <span class="count" id="charCountLabel">(0)</span></div>
+                    <div id="charList" style="flex:1;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部：物品横向滚动 -->
+        <div class="item-strip">
+            <div class="item-strip-head">
+                <span>物品</span>
+                <span class="count" id="itemCountLabel">(0)</span>
+            </div>
+            <div class="item-strip-scroll" id="itemList"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- 线索选择弹窗 -->
+    <div class="modal-mask" id="clueModalMask" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-head">
+                <span>选择线索</span>
+                <button class="btn-clear" id="clueModalClose">关闭</button>
+            </div>
+            <div class="modal-body" id="clueModalBody"></div>
+        </div>
+    </div>
+
+    <!-- 笔记悬浮窗 -->
+    <div class="note-pop" id="notePop" style="display:none;">
+        <div class="note-pop-title" id="notePopTitle"></div>
+        <div class="note-pop-body" id="notePopBody"></div>
+    </div>
+
+    <!-- 剧情回顾弹窗 -->
+    <div class="modal-mask" id="historyMask" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-head">
+                <span>剧情回顾</span>
+                <button class="btn-clear" id="historyClose">关闭</button>
+            </div>
+            <div class="modal-body" id="historyBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  完整修复版 – 所有功能正常，拖拽使用事件委托
+        // ============================================================
+
+        // ---------- 状态 ----------
+        const state = {
+            scene: 'wu_start',
+            clues: [], // 收集的线索 { id, owner }
+            items: [], // 收集的物品 { id, owner }
+            notes: [], // 已解锁的笔记 { id, owner }
+            characters: [],
+            usedBlockIds: new Set(),
+            allBlocks: [], // 所有可拖动块
+            selectedClueIds: [], // 选中的线索块ID（用于组合）
+            slotConfigs: [],
+            totalSlots: 0,
+        };
+
+        // ---------- 数据 ----------
+        const DATA = {
+            clues: {
+                'qingtuan': { name: '青团', desc: '张道诚给的清明青团，内馅是炒干的萝卜丝和花生碎，艾草清香。' },
+                'pipe': { name: '烟斗', desc: '张道诚的老旧烟斗，中间曾折断过，用粗麻绳紧紧绑住。' },
+                'letter': { name: '三封信', desc: '吴秋崖收到的三封匿名信，记载了罗刹鸟、鬼车和九头金乌的传说。' },
+                'wooden_sign': { name: '木牌符号', desc: '林洪颈间麻绳上系着的木牌，刻有与洞穴铭文相同的符号。' },
+                'cave_symbol': { name: '洞穴铭文', desc: '洞穴墙壁上的古老符号，与轿子上的封印铭文一致。' },
+                'cave_entrance': { name: '洞穴入口', desc: '黑色洞穴隐于密林，杂草疯长，内部禁锢着非人的力量。' },
+                'lin_shui_lou': { name: '临水楼', desc: '焦黑的大门紧锁，屋顶塌陷，大火与洪水在此交汇。' },
+                'shan_beng': { name: '山崩遗迹', desc: '凤头山炸开的缺口露出黄色岩石，乱石延伸到庄内。' },
+                'cellar_door': { name: '地窖暗门', desc: '临水楼地板下的暗门，刻有封印铭文，似乎通往凤头山深处。' },
+            },
+            items: {
+                'copper_key': { name: '铜钥匙', desc: '陈掌柜留下的铜钥匙，锈迹斑斑，能打开临水楼那扇刻满封印铭文的紧锁大门。' },
+                'gold_feather': { name: '金羽', desc: '从九头金乌雕像上脱落的金色羽毛，触手温热，仿佛还带着火焰的余温。' },
+            },
+            notes: {
+                'note_jiutou': { name: '九头金乌',
+                    detail: '凤尾庄的守护神？鸟面人身的神将，巡游仪式，九片树叶标志。山崩恰逢巡游之日。传说九头金乌是上古神鸟，被封印在凤头山中。' },
+                'note_shanbeng': { name: '三年前的山崩',
+                    detail: '暴雨中泥石流从凤头山奔涌而下，掩埋半个庄子，死伤十余人。山崩后水路废弃，凤尾庄逐渐凋零。有人认为山崩是封印松动的征兆。' },
+                'note_lin_shui': { name: '临水楼事件',
+                    detail: '土匪围攻临水楼，掌柜陈掌柜在二楼消失，大火后土匪头领双目被挖。陈掌柜自此人间蒸发，有人怀疑他化作了妖怪。' },
+                'note_linhong': { name: '林洪的疯癫',
+                    detail: '拖着马车轮子的老人，反复念叨"什么也没说"。颈间的麻绳与巡游轿子的绳索相似，他可能是当年巡游的参与者。' },
+                'note_seal': { name: '封印仪式',
+                    detail: '巡游并非祭典，而是封印仪式。九头金乌被囚于轿中，火焰是禁锢之牢，铭文封印于洞穴之中。山崩与土匪围攻可能都与此有关。' },
+                'note_door': { name: '门后的真相',
+                    detail: '铜钥匙打开了临水楼的大门。焦黑的大厅内，地板下露出一道地窖暗门，暗门上的铭文与轿子上的封印符号一致——它通往凤头山深处。' },
+            },
+            characters: {
+                'wuqiuyai': { name: '吴秋崖', role: '三山杂志主撰', desc: '瘦高纤细，戴圆框眼镜，对妖怪之事充满好奇。',
+                    info: '二十五六岁，素色长衫，随身挎包。', stories: ['你注视着凤头山，宿命感涌上心头。', '你翻阅三封信，字迹工整。'] },
+                'zhangzeping': { name: '张泽平', role: '向导', desc: '沉稳警惕，熟悉凤尾庄地形。', info: '腰间常备匕首，说话缓慢。',
+                    stories: ['他沉默地走在前面，步伐坚定。', '他偶尔停下来侧耳倾听。'] },
+                'shangnan': { name: '商难', role: '失忆的来客', desc: '被袭击后失去部分记忆，脑中闪现溺水与巡游。',
+                    info: '圆顶软帽，咬嘴唇的习惯。', stories: ['她站在密林中，与黑暗融为一体。', '水的记忆如潮水涌来。'] },
+                'zhangdaocheng': { name: '张道诚', role: '凤尾庄庄长', desc: '年迈庄长，左眼蒙黑布，右眼浑浊，烟斗不离手。',
+                    info: '布满补丁的粗布衣，当地口音。', stories: ['他抽烟时烟雾中藏着秘密。', '他的眼神时而空洞时而锐利。'] },
+                'chen_zhanggui': { name: '陈掌柜', role: '临水楼前掌柜', desc: '高大强壮，在土匪围攻之夜凭空消失。', info: '有人怀疑他化作了妖怪。',
+                    stories: ['他的身影消失在二楼火光中。', '他的下落成了最大谜团。'] },
+                'linhong': { name: '林洪', role: '疯癫老人', desc: '拖着马车轮子，颈间绑麻绳，反复说"什么也没说"。',
+                    info: '曾是庄民，山崩后疯癫。', stories: ['他的眼睛浑浊却似乎能看穿一切。', '他拖着的轮子发出沉重声响。'] },
+            }
+        };
+
+        // ---------- 组合映射（key 为线索id排序后的顺序，如 letter+lin_shui_lou） ----------
+        const COMBINATIONS = {
+            'cave_symbol+wooden_sign': {
+                noteId: 'note_seal',
+                text: '洞穴铭文与木牌符号一致，证实了封印仪式的存在——九头金乌被囚于轿中，火焰是禁锢之牢。'
+            },
+            'letter+lin_shui_lou': {
+                noteId: 'note_lin_shui',
+                text: '临水楼事件与三封信中的描述吻合，土匪围攻、大火、陈掌柜消失，这一切都与九头金乌的传说紧密相连。'
+            },
+            'pipe+qingtuan': {
+                noteId: 'note_linhong',
+                text: '张道诚的青团与烟斗，暗示他是凤尾庄变迁的见证者，他口中的"妖怪"或许与封印松动有关。'
+            },
+            'cave_entrance+shan_beng': {
+                noteId: 'note_shanbeng',
+                text: '洞穴入口与山崩遗迹——山崩可能并非自然灾害，而是封印被打破的后果，洞穴正是封印的中心。'
+            },
+        };
+
+        // ---------- DOM 引用 ----------
+        const app = document.getElementById('app');
+        const storyEl = document.getElementById('storyArea');
+        const storyHint = document.getElementById('storyHint');
+        const clueList = document.getElementById('clueList');
+        const charList = document.getElementById('charList');
+        const fillCount = document.getElementById('fillCount');
+        const totalSlots = document.getElementById('totalSlots');
+        const reasonCount = document.getElementById('reasonCount');
+        const charCountBadge = document.getElementById('charCountBadge');
+        const itemList = document.getElementById('itemList');
+        const itemCountLabel = document.getElementById('itemCountLabel');
+        const itemCountBadge = document.getElementById('itemCountBadge');
+        const charCountLabel = document.getElementById('charCountLabel');
+        const combineBtn = document.getElementById('combineBtn');
+        const clearSelectionBtn = document.getElementById('clearSelection');
+        const toast = document.getElementById('toast');
+        const notePop = document.getElementById('notePop');
+        const notePopTitle = document.getElementById('notePopTitle');
+        const notePopBody = document.getElementById('notePopBody');
+        const historyMask = document.getElementById('historyMask');
+        const historyBody = document.getElementById('historyBody');
+        const historyBtn = document.getElementById('historyBtn');
+        const historyClose = document.getElementById('historyClose');
+        const clueModalMask = document.getElementById('clueModalMask');
+        const clueModalBody = document.getElementById('clueModalBody');
+        const clueModalClose = document.getElementById('clueModalClose');
+        const openClueModal = document.getElementById('openClueModal');
+        const comboSlots = document.getElementById('comboSlots');
+        const clueCountLabel = document.getElementById('clueCountLabel');
+        const reasonTitleCount = document.getElementById('reasonTitleCount');
+
+        let toastTimer = null;
+        let currentSceneOwner = 'wu';
+
+        // ---------- Toast ----------
+        function showToast(text, type = '') {
+            toast.textContent = text;
+            toast.className = 'toast show ' + type;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+        }
+
+        // ---------- 核心操作 ----------
+        function addClue(id, owner) {
+            if (state.clues.find(c => c.id === id)) return false;
+            if (!DATA.clues[id]) return false;
+            const ownerVal = owner || currentSceneOwner || 'wu';
+            state.clues.push({ id, owner: ownerVal });
+            const blockId = 'clue_' + id;
+            if (!state.allBlocks.find(b => b.id === blockId)) {
+                state.allBlocks.push({
+                    id: blockId,
+                    type: 'clue',
+                    label: DATA.clues[id].name,
+                    detail: DATA.clues[id].desc,
+                    sourceId: id,
+                    sourceType: 'clue',
+                    owner: ownerVal
+                });
+            }
+            renderAll();
+            showToast(`已收集线索：${DATA.clues[id].name}`, 'success');
+            return true;
+        }
+
+        function addItem(id, owner) {
+            if (state.items.find(i => i.id === id)) return false;
+            if (!DATA.items[id]) return false;
+            const ownerVal = owner || currentSceneOwner || 'wu';
+            state.items.push({ id, owner: ownerVal });
+            const blockId = 'item_' + id;
+            if (!state.allBlocks.find(b => b.id === blockId)) {
+                state.allBlocks.push({
+                    id: blockId,
+                    type: 'item',
+                    label: DATA.items[id].name,
+                    detail: DATA.items[id].desc,
+                    sourceId: id,
+                    sourceType: 'item',
+                    owner: ownerVal
+                });
+            }
+            renderAll();
+            showToast(`已收集物品：${DATA.items[id].name}`, 'success');
+            return true;
+        }
+
+        function addNote(id, owner) {
+            if (state.notes.find(n => n.id === id)) return false;
+            if (!DATA.notes[id]) return false;
+            const ownerVal = owner || currentSceneOwner || 'wu';
+            state.notes.push({ id, owner: ownerVal });
+            const blockId = 'note_' + id;
+            if (!state.allBlocks.find(b => b.id === blockId)) {
+                state.allBlocks.push({
+                    id: blockId,
+                    type: 'note',
+                    label: DATA.notes[id].name,
+                    detail: DATA.notes[id].detail,
+                    sourceId: id,
+                    sourceType: 'note',
+                    owner: ownerVal
+                });
+            }
+            // 解锁后：剧情中对应的高亮词变为可点击
+            storyDom.forEach(div => {
+                div.querySelectorAll(`.note-highlight[data-note="${id}"]`).forEach(el => {
+                    el.classList.remove('locked');
+                });
+            });
+            renderAll();
+            showToast(`解锁笔记：${DATA.notes[id].name}`, 'success');
+            return true;
+        }
+
+        function unlockChar(id) {
+            if (state.characters.includes(id)) return false;
+            if (!DATA.characters[id]) return false;
+            state.characters.push(id);
+            const blockId = 'char_' + id;
+            const hasBlock = state.allBlocks.find(b => b.id === blockId) ||
+                state.allBlocks.find(b => b.type === 'char' && b.sourceId === id);
+            if (!hasBlock) {
+                state.allBlocks.push({
+                    id: blockId,
+                    type: 'char',
+                    label: DATA.characters[id].name,
+                    detail: DATA.characters[id].desc + ' — ' + DATA.characters[id].info,
+                    sourceId: id,
+                    sourceType: 'char',
+                    owner: 'all'
+                });
+            }
+            // 人物框加入后：剧情中对应的高亮恢复为普通文字
+            storyDom.forEach(div => {
+                div.querySelectorAll(`.char-highlight[data-char="${id}"]`).forEach(el => {
+                    const text = el.textContent;
+                    const p = el.parentNode;
+                    const tn = document.createTextNode(text);
+                    p.replaceChild(tn, el);
+                    p.normalize();
+                });
+            });
+            renderAll();
+            showToast(`人物加入：${DATA.characters[id].name}`, 'success');
+            return true;
+        }
+
+        // ---------- 手动组合推理 ----------
+        function performCombine() {
+            const selected = state.selectedClueIds;
+            if (selected.length < 2) {
+                showToast('请至少选择两条线索', 'error');
+                return;
+            }
+            const clueIds = [];
+            selected.forEach(blockId => {
+                const block = state.allBlocks.find(b => b.id === blockId);
+                if (block && block.sourceType === 'clue') {
+                    clueIds.push(block.sourceId);
+                }
+            });
+            if (clueIds.length < 2) {
+                showToast('请选择有效的线索', 'error');
+                return;
+            }
+            const sorted = [...clueIds].sort();
+            const key = sorted.join('+');
+            const combo = COMBINATIONS[key];
+            if (combo) {
+                const blockId = 'reason_' + key.replace(/\+/g, '_');
+                if (!state.allBlocks.find(b => b.id === blockId)) {
+                    state.allBlocks.push({
+                        id: blockId,
+                        type: 'reason',
+                        label: '推理：' + combo.text.slice(0, 20) + '…',
+                        detail: combo.text,
+                        sourceId: key,
+                        sourceType: 'reason',
+                        owner: 'all'
+                    });
+                    if (combo.noteId) addNote(combo.noteId, 'all');
+                    showToast(`推理成功！新推理块已生成`, 'success');
+                    state.selectedClueIds = [];
+                    renderAll();
+                } else {
+                    showToast('该推理已存在', '');
+                }
+            } else {
+                showToast('这些线索无法组合，请尝试其他组合', 'error');
+            }
+        }
+
+        function toggleSelectClue(blockId) {
+            const idx = state.selectedClueIds.indexOf(blockId);
+            if (idx > -1) {
+                state.selectedClueIds.splice(idx, 1);
+            } else {
+                state.selectedClueIds.push(blockId);
+            }
+            renderClues();
+        }
+
+        function clearSelection() {
+            state.selectedClueIds = [];
+            renderClues();
+            if (clueModalMask.style.display !== 'none') renderClueModal();
+        }
+
+        // ---------- 场景定义 ----------
+        const SCENES = {};
+
+        function slotHtml(slotId, expected, placeholder = '______') {
+            return `<span class="slot" data-slot="${slotId}" data-expect="${expected}"><span class="placeholder">${placeholder}</span></span>`;
+        }
+
+        // ---- 吴秋崖线 ----
+        SCENES['wu_start'] = {
+            owner: 'wu',
+            story: `
+                <div class="narr-line">✦ 第二章 · 凤尾庄的清晨 ✦</div>
+                <div class="narr-line"><span class="char-highlight" data-char="wuqiuyai">吴秋崖</span>被热醒了。夏日的天气让人浑身黏腻，汗水湿透了枕头。</div>
+                <div class="narr-line">他推开窗户，却感受不到一丝凉意。凤尾庄的早晨与它的夜晚一样，悄无声息。</div>
+                <div class="narr-line">他看到了那条土色的路——从庄中一直延伸到凤头山上，如同无法愈合的伤口。</div>
+                <hr class="divider" />
+                <div class="narr-line">吴秋崖擦了把脸，小心翼翼地走下吱呀作响的楼梯。一楼传来一个老者的声音：</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「你起晚了。」</span></div>
+                <div class="narr-line">说话的是凤尾庄的庄长，左眼蒙着黑布，右眼浑浊，习惯性拿着烟斗。</div>
+                <div class="msg"><span class="speaker wu">吴秋崖</span><span class="text">「老先生，昨夜多谢收留。」</span></div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「要下雨了。他们一大早就进山了——看来他们不太喜欢你。」</span></div>
+                <div class="narr-line">吴秋崖透过小窗看着远处的凤头山，心中涌起一股不安。</div>
+                <hr class="divider" />
+                <div class="narr-line"><span class="char-highlight" data-char="zhangdaocheng">张道诚</span>从灶台上取出三个 <span class="clue-highlight" data-clue="qingtuan">青团</span>，递了过来。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「清明剩下的，你要吗？」</span></div>
+                <div class="narr-line">吴秋崖接过青团，小心翼翼地咬了一口——炒干的萝卜丝加上花生碎，相当正宗的味道。</div>
+                <div class="narr-line">他环顾这间老屋，注意到墙角的 <span class="clue-highlight" data-clue="pipe">烟斗</span> 和张道诚身上的旧衣。</div>
+                <hr class="divider" />
+                <div class="narr-line">张道诚坐下，吸了一口烟斗，浑浊的眼睛望着远方。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「你们也是来找 ${slotHtml('slot_1', 'block_jiutou', '______')} 的吗？」</span></div>
+                <div class="narr-line">吴秋崖不知该作何回答。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「什么都没有了。${slotHtml('slot_2', 'block_shanbeng', '______')} 了。」</span></div>
+                <div class="narr-line">吴秋崖心中一震——这正是他在信中读到的那个词。</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_1', expected: 'block_jiutou', label: '九头金乌' },
+                { id: 'slot_2', expected: 'block_shanbeng', label: '山崩' },
+            ],
+            initBlocks: [
+                { id: 'block_jiutou', type: 'reason', label: '九头金乌', detail: '凤尾庄的守护神？鸟面人身，巡游仪式。山崩恰逢巡游之日。',
+                    owner: 'wu' },
+                { id: 'block_shanbeng', type: 'reason', label: '山崩', detail: '三年前暴雨中泥石流从凤头山奔涌而下，掩埋半个庄子。',
+                    owner: 'wu' },
+            ],
+            onComplete: function() {
+                showToast('✓ 填空完成！你获得了新线索：临水楼的秘密', 'success');
+                addNote('note_jiutou', 'wu');
+                addNote('note_shanbeng', 'wu');
+                addClue('shan_beng', 'wu');
+                pendingScene = 'wu_linlou_hint';
+                storyHint.textContent = '▾ 点击进入下一场景';
+            }
+        };
+
+        SCENES['wu_linlou_hint'] = {
+            owner: 'wu',
+            story: `
+                <div class="narr-line">✦ 临水楼的往事 ✦</div>
+                <div class="narr-line">张道诚沉默了很久，烟斗里的火光明明灭灭。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「<span class="note-highlight" data-note="note_lin_shui">临水楼</span>……那是凤尾庄最气派的建筑，${slotHtml('slot_3', 'block_chen', '______')} 是那里的话事人。」</span></div>
+                <div class="narr-line">他讲起那12个土匪——将临水楼团团围住，大喊着「交出九头金乌」。</div>
+                <div class="narr-line">「临水楼二楼亮起了灯。<span class="char-highlight" data-char="chen_zhanggui">陈掌柜</span>的身影出现在窗边，不紧不慢，似乎没把土匪放在眼里。」</div>
+                <div class="narr-line">「然后大门打开了。一个身穿男子便服、扎着辫子的女人站在门口，说：『掌柜邀请你们的头领上二楼。』」</div>
+                <div class="narr-line">土匪头领走了上去。</div>
+                <div class="narr-line">「然后……二楼的烛火熄灭了。再亮起来时，是熊熊大火。」</div>
+                <div class="narr-line">土匪头领被火包围，眼球被挖去，只剩下两个巨大的血洞。</div>
+                <div class="narr-line">「大火之后，天降大雨。<span class="note-highlight" data-note="note_shanbeng">山崩</span>就在这时发生了。」</div>
+                <div class="narr-line">张道诚的声音越来越低。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「七天之后，我们打开了临水楼的大门。几具烧得不成人形的尸体就躺在门边……」</span></div>
+                <div class="narr-line">「但在那里面，没有陈掌柜。没有一具尸体的身形像他。」</div>
+                <div class="narr-line">「后来，我们把那扇门重新钉死，又请人在门上刻了和轿子里一模一样的<span class="note-highlight" data-note="note_seal">封印铭文</span>。」</div>
+                <div class="narr-line">张道诚从怀里摸出一把 <span class="clue-highlight" data-clue="copper_key">铜钥匙</span>，放在桌上。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「陈掌柜留下的。三年了，没人敢再碰那扇门。你若非要查个明白——就自己开门去看。」</span></div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「他就那么……${slotHtml('slot_4', 'block_disappear', '______')} 了。」</span></div>
+                <div class="narr-line">张道诚凑近吴秋崖，压低声音：</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「不是临水楼变成了妖怪，是陈掌柜……那个人变成了妖怪。」</span></div>
+                <hr class="divider" />
+                <div class="narr-line">吴秋崖感到一阵寒意。他忽然想起一件事：</div>
+                <div class="msg"><span class="speaker wu">吴秋崖</span><span class="text">「您说……那天是九头金乌巡游？山崩和巡游，是同一天？」</span></div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「……是。」</span></div>
+                <div class="narr-line">这个巧合，让吴秋崖的思绪翻涌。</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_3', expected: 'block_chen', label: '陈掌柜' },
+                { id: 'slot_4', expected: 'block_disappear', label: '消失' },
+            ],
+            initBlocks: [
+                { id: 'block_chen', type: 'char', label: '陈掌柜', detail: '临水楼掌柜，高大强壮，在土匪围攻之夜从二楼消失。',
+                    sourceId: 'chen_zhanggui', owner: 'wu' },
+                { id: 'block_disappear', type: 'reason', label: '消失', detail: '土匪封锁了所有出口，陈掌柜却凭空消失，没有留下任何痕迹。',
+                    owner: 'wu' },
+            ],
+            onComplete: function() {
+                showToast('✓ 你揭开了临水楼的核心秘密！', 'success');
+                addNote('note_lin_shui', 'wu');
+                addClue('lin_shui_lou', 'wu');
+                addClue('letter', 'wu');
+                pendingScene = 'wu_door';
+                storyHint.textContent = '▾ 点击进入下一场景';
+            }
+        };
+
+        SCENES['wu_door'] = {
+            owner: 'wu',
+            story: `
+                <div class="narr-line">✦ 临水楼 · 锈死的大门 ✦</div>
+                <div class="narr-line">吴秋崖站在临水楼前。焦黑的大门紧锁，屋顶塌陷，门上刻着与轿子上一模一样的<span class="note-highlight" data-note="note_seal">封印铭文</span>。</div>
+                <div class="msg"><span class="speaker wu">吴秋崖</span><span class="text">「三年前……这扇门里到底发生了什么？」</span></div>
+                <div class="narr-line">他深吸一口气，用${slotHtml('slot_door', 'item_copper_key', '______')}插入锈死的锁孔。</div>
+                <div class="narr-line">锁芯发出一声沉闷的转动，大门缓缓打开。门内一片焦黑，大厅的地板下，隐约露出一道<span class="note-highlight" data-note="note_door">暗门</span>的轮廓——上面刻着熟悉的封印铭文。</div>
+                <div class="narr-line">吴秋崖的手心沁出了冷汗。那道暗门，似乎正通往凤头山深处。</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_door', expected: 'item_copper_key', label: '铜钥匙' },
+            ],
+            initBlocks: [
+                { id: 'item_copper_key', type: 'item', label: '铜钥匙', detail: '陈掌柜留下的铜钥匙，锈迹斑斑，能打开临水楼紧锁的大门。',
+                    owner: 'wu' },
+            ],
+            onComplete: function() {
+                showToast('✓ 大门打开！门后的真相现出真容', 'success');
+                addClue('cellar_door', 'wu');
+                addNote('note_door', 'wu');
+                pendingScene = 'wu_end';
+                storyHint.textContent = '▾ 点击进入下一场景';
+            }
+        };
+
+        SCENES['wu_end'] = {
+            owner: 'wu',
+            story: `
+                <div class="narr-line">✦ 凤尾庄的真相 ✦</div>
+                <div class="narr-line">张道诚重新坐回椅子上，吸着烟斗，眼神空洞。</div>
+                <div class="msg"><span class="speaker old">张道诚</span><span class="text">「那座山，这个庄子，都散发着一股焦苦腐烂的气息……时间越久越强烈。」</span></div>
+                <div class="narr-line">吴秋崖深吸一口气，他闻不到那股气息，但他能感受到这个庄子正在死去。</div>
+                <div class="narr-line">「人陆陆续续都离开了，除了像我这样的老人，无处可去，只能等死。」</div>
+                <div class="narr-line">张道诚的声音越来越低，仿佛在自言自语。</div>
+                <hr class="divider" />
+                <div class="narr-line">✦ 吴秋崖线 · 第一阶段完成 ✦</div>
+                <div class="narr-line">你已揭开了凤尾庄的核心秘密。<span class="note-highlight" data-note="note_linhong">林洪的疯癫</span>、临水楼的火灾、陈掌柜的消失——</div>
+                <div class="narr-line">一切都指向一个真相：${slotHtml('slot_5', 'block_truth', '______')}</div>
+                <hr class="divider" />
+                <div class="narr-line">吴秋崖的故事暂告段落。接下来，视角将转向商难……</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_5', expected: 'block_truth', label: '封印仪式' },
+            ],
+            initBlocks: [
+                { id: 'block_truth', type: 'reason', label: '封印仪式',
+                    detail: '九头金乌被囚于轿中，火焰是禁锢之牢，铭文封印于洞穴之中。山崩正是封印被打破的后果。', owner: 'wu' },
+            ],
+            onComplete: function() {
+                showToast('吴秋崖线核心推理完成！', 'success');
+                addNote('note_seal', 'wu');
+                showToast('接下来，视角将转向商难……', '');
+                pendingScene = 'shan_start';
+                storyHint.textContent = '▾ 点击进入商难线';
+            }
+        };
+
+        // ---- 商难线 ----
+        SCENES['shan_start'] = {
+            owner: 'shan',
+            story: `
+                <div class="narr-line">✦ 第一章 · 密林之中 ✦</div>
+                <div class="narr-line"><span class="char-highlight" data-char="shangnan">商难</span>独自站在密林中，后脑的疼痛依然清晰。<span class="char-highlight" data-char="zhangzeping">张泽平</span>不见了，吴秋崖也不见踪影。</div>
+                <div class="narr-line">她环顾四周，黑暗如同活物般挤压着她。</div>
+                <div class="narr-line">「我被袭击了……」她低声重复着。</div>
+                <div class="narr-line">她想起了那些记忆碎片——满山的火盆、鸟头人身的神将、黄金铸成的 ${slotHtml('slot_6', 'block_jiutou2', '______')}。</div>
+                <div class="narr-line">还有……溺水的感觉。</div>
+                <hr class="divider" />
+                <div class="narr-line">商难在密林中跌跌撞撞地穿行，直到看见一条歪歪扭扭的山路。</div>
+                <div class="narr-line">在路的尽头，一个黑色的 <span class="clue-highlight" data-clue="cave_entrance">洞穴</span> 赫然出现。</div>
+                <div class="narr-line">洞穴周围杂草疯长，内部涌动的黑暗似乎正禁锢着某种非人的力量。</div>
+                <div class="narr-line">她呆立着，心跳越来越快。</div>
+                <div class="narr-line">在洞穴边缘，她发现了刻在石壁上的 <span class="clue-highlight" data-clue="cave_symbol">古老符号</span>——与记忆中轿子上的封印铭文一模一样。</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_6', expected: 'block_jiutou2', label: '九头金乌' },
+            ],
+            initBlocks: [
+                { id: 'block_jiutou2', type: 'reason', label: '九头金乌', detail: '鸟面人身的神将，巡游仪式，黄金铸成的九头金乌。',
+                    owner: 'shan' },
+            ],
+            onComplete: function() {
+                showToast('✓ 商难找回了关键记忆！', 'success');
+                addNote('note_jiutou', 'shan');
+                addClue('cave_entrance', 'shan');
+                addClue('cave_symbol', 'shan');
+                pendingScene = 'shan_cave';
+                storyHint.textContent = '▾ 点击进入下一场景';
+            }
+        };
+
+        SCENES['shan_cave'] = {
+            owner: 'shan',
+            story: `
+                <div class="narr-line">✦ 洞穴深处 ✦</div>
+                <div class="narr-line">商难伏低身子，钻入了洞穴。</div>
+                <div class="narr-line">黑暗瞬间将她吞没。她感到一股莫名的力量在牵引着她——仿佛洞穴深处有什么东西正在等待。</div>
+                <div class="narr-line">她听到了自己的心跳，以及……某种低沉的呼吸声。</div>
+                <div class="narr-line">在黑暗中，她看到了墙壁上的铭文——与轿子上的封印符号一模一样。</div>
+                <div class="narr-line">「<span class="note-highlight" data-note="note_jiutou">九头金乌</span>……」她默念着，记忆如潮水般涌来。</div>
+                <div class="narr-line">她伸出手，触碰到了冰冷的金属——那是黄金铸成的九头金乌，静静矗立在洞穴深处。</div>
+                <div class="narr-line">在她触碰金乌的一瞬间，一枚 <span class="clue-highlight" data-clue="gold_feather">金羽</span> 从雕像上脱落，落在她的掌心，触手温热。</div>
+                <div class="narr-line">在金属底座上，她发现了一块刻有符号的 <span class="clue-highlight" data-clue="wooden_sign">木牌</span>，与 ${slotHtml('slot_7', 'block_linhong2', '______')} 颈间的木牌如出一辙。</div>
+                <div class="narr-line"><span class="char-highlight" data-char="linhong">林洪</span>——那个拖着马车轮子的疯癫老人，颈间绑着麻绳，也许他知道些什么。</div>
+                <div class="narr-line"><span class="char-highlight" data-char="linhong">林洪</span>——那个拖着马车轮子的疯癫老人，颈间绑着麻绳，也许他知道些什么。</div>
+                <hr class="divider" />
+                <div class="narr-line">✦ 商难线 · 阶段性结局 ✦</div>
+                <div class="narr-line">她终于触碰到了九头金乌。凤尾庄的真相，正在一点点浮出水面……</div>
+            `,
+            slotConfigs: [
+                { id: 'slot_7', expected: 'block_linhong2', label: '林洪' },
+            ],
+            initBlocks: [
+                { id: 'block_linhong2', type: 'char', label: '林洪', detail: '疯癫老人，颈间绑着麻绳，拖着一个马车轮子，反复说"什么也没说"。',
+                    sourceId: 'linhong', owner: 'shan' },
+            ],
+            onComplete: function() {
+                showToast('商难线完成！凤头山的秘密已经揭开。', 'success');
+                addNote('note_linhong', 'shan');
+                addClue('wooden_sign', 'shan');
+                showToast('两条线索汇合——凤尾庄的完整真相等待你的拼合！', 'success');
+            }
+        };
+
+        // ---------- 渲染引擎 ----------
+        function renderAll() {
+            renderStory();
+            renderClues();
+            renderItems();
+            renderCharacters();
+            updateCounts();
+            // 设置所有拖拽块为可拖拽
+            refreshDraggable();
+        }
+
+        // ---------- 打字机剧情引擎 ----------
+        let storyDom = []; // 每行一个 div
+        let storySceneId = null;
+        let lineIndex = 0;
+        let blocked = false; // 当前行有待填空，点击推进被阻塞
+        let pendingScene = null; // 填空完成后待进入的下一场景（点击推进）
+        let historyLog = []; // 已显示的行（用于回顾）
+        let typingTimer = null;
+        let typingNodes = [];
+        let typingDoneCb = null;
+        const TYPE_MS = 28; // 打字机每字间隔
+
+        function renderStory() {
+            const scene = SCENES[state.scene];
+            if (!scene) {
+                storyEl.innerHTML = '<div class="narr-line">场景未加载</div>';
+                return;
+            }
+            currentSceneOwner = scene.owner || 'wu';
+
+            // 初始化块
+            if (scene.initBlocks) {
+                scene.initBlocks.forEach(b => {
+                    if (!state.allBlocks.find(ex => ex.id === b.id)) {
+                        state.allBlocks.push({ ...b });
+                    }
+                });
+            }
+
+            state.slotConfigs = scene.slotConfigs || [];
+            state.totalSlots = state.slotConfigs.length;
+
+            if (storySceneId !== state.scene) {
+                // 场景切换：淡出旧内容 → 构建 → 章节标题渐显（点击才开始正文打字机）
+                storyEl.classList.add('story-fade-out');
+                setTimeout(() => {
+                    buildStoryDom(scene);
+                    storyEl.classList.remove('story-fade-out');
+                    storyEl.classList.add('story-fade-in');
+                    // 标题渐显停留后，等待玩家点击推进正文
+                    setTimeout(() => {
+                        storyEl.classList.remove('story-fade-in');
+                    }, 900);
+                }, 320);
+            } else {
+                // 场景未变：仅更新已显示行（收集的高亮移除、已填槽恢复）
+                removeCollectedHighlights(storyEl);
+                restoreSlots(storyEl);
+            }
+            updateCounts();
+        }
+
+        // 构建场景的所有行 DOM
+        function buildStoryDom(scene) {
+            storySceneId = state.scene;
+            const lines = scene.story.split('\n').map(s => s.trim()).filter(Boolean);
+            storyDom = lines.map(html => {
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                removeCollectedHighlights(div);
+                restoreSlots(div);
+                // 绑定线索/物品高亮点击
+                div.querySelectorAll('.clue-highlight').forEach(el => {
+                    el.removeEventListener('click', handleClueClick);
+                    el.addEventListener('click', handleClueClick);
+                });
+                // 笔记高亮：已解锁才可点击查看，未解锁显示为普通文字
+                div.querySelectorAll('.note-highlight').forEach(el => {
+                    const noteId = el.dataset.note;
+                    const unlocked = state.notes.find(n => n.id === noteId);
+                    el.removeEventListener('click', handleNoteClick);
+                    el.addEventListener('click', handleNoteClick);
+                    if (!unlocked) el.classList.add('locked');
+                });
+                // 人物高亮：未加入人物框时高亮可点击，已加入则恢复普通文字
+                div.querySelectorAll('.char-highlight').forEach(el => {
+                    const charId = el.dataset.char;
+                    if (state.characters.includes(charId)) {
+                        const text = el.textContent;
+                        const p = el.parentNode;
+                        const tn = document.createTextNode(text);
+                        p.replaceChild(tn, el);
+                        p.normalize();
+                    } else {
+                        el.removeEventListener('click', handleCharClick);
+                        el.addEventListener('click', handleCharClick);
+                    }
+                });
+                return div;
+            });
+            if (storyDom.length === 0) {
+                const div = document.createElement('div');
+                div.innerHTML = '<div class="narr-line">（场景为空）</div>';
+                storyDom.push(div);
+            }
+            storyEl.innerHTML = '';
+            lineIndex = 0;
+            blocked = false;
+            historyLog = [];
+            stopTyping();
+
+            // 底部推进提示
+            storyEl.appendChild(storyHint);
+            storyHint.textContent = '▾ 点击空白处推进剧情';
+
+            // 第一行作为章节标题直接显示（非打字机）
+            const title = storyDom[0];
+            title.classList.add('chapter-title');
+            historyLog.push({ html: title.innerHTML, who: detectSpeaker(title) });
+            lineIndex = 1;
+            storyEl.appendChild(title);
+        }
+
+        // 笔记高亮点击：弹出悬浮窗（未解锁时提示）
+        function handleNoteClick(e) {
+            e.stopPropagation();
+            const el = e.currentTarget;
+            const noteId = el.dataset.note;
+            const note = DATA.notes[noteId];
+            if (!note) return;
+            if (el.classList.contains('locked')) {
+                showToast('此笔记尚未解锁，可通过线索组合推理获得', '');
+                return;
+            }
+            notePopTitle.textContent = note.name;
+            notePopBody.textContent = note.detail;
+            const rect = el.getBoundingClientRect();
+            notePop.style.display = 'block';
+            const pw = notePop.offsetWidth;
+            const ph = notePop.offsetHeight;
+            let left = rect.left;
+            let top = rect.bottom + 8;
+            if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+            if (top + ph > window.innerHeight - 8) top = rect.top - ph - 8;
+            if (top < 8) top = 8;
+            notePop.style.left = left + 'px';
+            notePop.style.top = top + 'px';
+        }
+
+        // 人物高亮点击：加入人物框
+        function handleCharClick(e) {
+            e.stopPropagation();
+            const el = e.currentTarget;
+            const charId = el.dataset.char;
+            if (state.characters.includes(charId)) return;
+            if (unlockChar(charId)) {
+                // 立即移除该高亮（恢复普通文字）
+                const text = el.textContent;
+                const p = el.parentNode;
+                const tn = document.createTextNode(text);
+                p.replaceChild(tn, el);
+                p.normalize();
+            }
+        }
+
+        // 关闭笔记悬浮窗
+        function closeNotePop() {
+            notePop.style.display = 'none';
+        }
+
+        // 逐字打字机效果
+        function startTyping(line, done) {
+            const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) {
+                const n = walker.currentNode;
+                if (n.nodeValue && n.nodeValue.trim()) {
+                    n.__full = n.nodeValue;
+                    n.nodeValue = '';
+                    nodes.push(n);
+                }
+            }
+            if (nodes.length === 0) {
+                if (done) done();
+                return;
+            }
+            typingNodes = nodes;
+            typingDoneCb = done;
+            let ni = 0;
+            let pos = 0;
+            typingTimer = setInterval(function() {
+                const n = nodes[ni];
+                n.nodeValue = n.__full.slice(0, ++pos);
+                if (pos >= n.__full.length) {
+                    ni++;
+                    pos = 0;
+                    if (ni >= nodes.length) finishTyping();
+                }
+            }, TYPE_MS);
+        }
+
+        // 立即完成当前打字（点击跳过）
+        function finishTyping() {
+            if (typingTimer) {
+                clearInterval(typingTimer);
+                typingTimer = null;
+            }
+            typingNodes.forEach(n => { n.nodeValue = n.__full; });
+            typingNodes = [];
+            const cb = typingDoneCb;
+            typingDoneCb = null;
+            if (cb) cb();
+        }
+
+        function stopTyping() {
+            if (typingTimer) {
+                clearInterval(typingTimer);
+                typingTimer = null;
+            }
+            typingNodes.forEach(n => { if (n.__full) n.nodeValue = n.__full; });
+            typingNodes = [];
+            typingDoneCb = null;
+        }
+
+        // 显示下一行（打字机），到底后重头开始
+        function showNextLine() {
+            if (lineIndex >= storyDom.length) {
+                storyEl.innerHTML = '';
+                lineIndex = 0;
+            }
+            const line = storyDom[lineIndex];
+            historyLog.push({ html: line.innerHTML, who: detectSpeaker(line) });
+            lineIndex++;
+            storyEl.appendChild(line);
+            // 按实际高度裁剪：超出剧情框高度的最旧行移除，保留底部留白
+            let guard = 0;
+            while (storyEl.scrollHeight > storyEl.clientHeight + 2 && storyEl.children.length > 1 && guard < 50) {
+                storyEl.removeChild(storyEl.firstChild);
+                guard++;
+            }
+            startTyping(line, function() {
+                // 打完一行：若行内含未填空槽，阻塞推进
+                if (line.querySelector('.slot:not(.filled)')) {
+                    blocked = true;
+                    storyHint.textContent = '▾ 填入空缺内容后继续';
+                    showToast('此处需要填入线索才能继续', '');
+                }
+            });
+        }
+
+        // 提取一行中的说话人（用于回顾窗口）
+        function detectSpeaker(line) {
+            const s = line.querySelector('.speaker');
+            return s ? s.textContent : '';
+        }
+
+        // 打开剧情回顾
+        function openHistory() {
+            const body = historyBody;
+            body.innerHTML = '';
+            if (historyLog.length === 0) {
+                body.innerHTML = '<div class="empty">暂无剧情记录</div>';
+            } else {
+                historyLog.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'hist-line';
+                    const div2 = document.createElement('div');
+                    div2.innerHTML = item.html;
+                    // 去除交互元素，仅留文字
+                    div2.querySelectorAll('.slot').forEach(sl => {
+                        sl.classList.remove('filled');
+                        sl.innerHTML = '<span class="placeholder">______</span>';
+                    });
+                    div.appendChild(div2);
+                    body.appendChild(div);
+                });
+            }
+            historyMask.style.display = 'flex';
+        }
+
+        function closeHistory() {
+            historyMask.style.display = 'none';
+        }
+
+        // 移除已收集线索/物品的高亮
+        function removeCollectedHighlights(root) {
+            state.clues.concat(state.items).forEach(c => {
+                const els = root.querySelectorAll(`.clue-highlight[data-clue="${c.id}"]`);
+                els.forEach(el => {
+                    const text = el.textContent;
+                    const parent = el.parentNode;
+                    const textNode = document.createTextNode(text);
+                    parent.replaceChild(textNode, el);
+                    parent.normalize();
+                });
+            });
+        }
+
+        // 恢复已填的槽
+        function restoreSlots(root) {
+            state.slotConfigs.forEach(cfg => {
+                const el = root.querySelector(`.slot[data-slot="${cfg.id}"]`);
+                if (el && state.usedBlockIds.has(cfg.expected)) {
+                    el.dataset.filled = 'true';
+                    el.dataset.content = cfg.expected;
+                    const block = state.allBlocks.find(b => b.id === cfg.expected);
+                    if (block) {
+                        el.innerHTML = `<span class="slot-content">${block.label}</span>`;
+                        el.classList.add('filled');
+                    }
+                }
+            });
+        }
+
+        // 点击空白处：跳过打字 / 推进下一行 / 进入下一场景（被填空阻塞时不可推进）
+        storyEl.addEventListener('click', function(e) {
+            if (e.target.closest('.clue-highlight') || e.target.closest('.note-highlight') ||
+                e.target.closest('.char-highlight') || e.target.closest('.slot') ||
+                e.target.closest('.drag-block') || e.target.closest('button')) return;
+            closeNotePop();
+            if (blocked) {
+                showToast('请先填入空缺内容，才能继续阅读', '');
+                return;
+            }
+            if (pendingScene) {
+                const next = pendingScene;
+                pendingScene = null;
+                loadScene(next);
+                return;
+            }
+            if (typingTimer) {
+                finishTyping();
+                return;
+            }
+            showNextLine();
+        });
+
+        // 点击他处关闭笔记悬浮窗
+        document.addEventListener('click', function(e) {
+            if (notePop.style.display !== 'none' && !e.target.closest('.note-highlight')) {
+                closeNotePop();
+            }
+        });
+
+        // 剧情回顾
+        historyBtn.addEventListener('click', openHistory);
+        historyClose.addEventListener('click', closeHistory);
+        historyMask.addEventListener('click', function(e) {
+            if (e.target === historyMask) closeHistory();
+        });
+
+        function renderClues() {
+            // 组合槽位：按选中线索动态生成，可多于 2 条
+            const sel = state.selectedClueIds;
+            let slotHtml = '';
+            sel.forEach((bid, i) => {
+                const block = state.allBlocks.find(b => b.id === bid);
+                if (block) {
+                    slotHtml += `
+                        <div class="combo-slot filled" data-block="${block.id}">
+                            ${block.label}
+                            <span class="combo-slot-x">×</span>
+                        </div>
+                    `;
+                }
+            });
+            // 末尾加号槽位：添加线索
+            slotHtml += `
+                <div class="combo-slot" id="comboAddSlot">
+                    <span class="combo-slot-empty">＋ 添加</span>
+                </div>
+            `;
+            comboSlots.innerHTML = slotHtml;
+            comboSlots.querySelectorAll('.combo-slot.filled').forEach(el => {
+                el.addEventListener('click', function() {
+                    toggleSelectClue(this.dataset.block);
+                });
+            });
+            document.getElementById('comboAddSlot').addEventListener('click', function() {
+                openClueModal.click();
+            });
+
+            // 推理结果列表（reason 块，可拖拽填空）
+            let items = state.allBlocks.filter(b =>
+                b.type === 'reason' && !state.usedBlockIds.has(b.id));
+            if (items.length === 0) {
+                clueList.innerHTML = '<div class="empty">推理结果将显示在这里</div>';
+            } else {
+                clueList.innerHTML = items.map(block => {
+                    const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
+                    const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
+                    return `
+                        <div class="drag-block" data-block="${block.id}" data-type="reason" data-owner="${block.owner}">
+                            ${block.label}
+                            <span class="block-type">推理</span>
+                            <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                            <div class="block-detail">${block.detail}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            clueCountLabel.textContent = `(${items.length})`;
+            reasonTitleCount.textContent = `(${items.length})`;
+
+            combineBtn.disabled = sel.length < 2;
+        }
+
+        // 线索选择弹窗：渲染可用线索（可多选，不限制数量）
+        function renderClueModal() {
+            const items = state.allBlocks.filter(b =>
+                b.type === 'clue' && !state.usedBlockIds.has(b.id));
+            if (items.length === 0) {
+                clueModalBody.innerHTML = '<div class="empty">暂无可用线索，请先点击剧情中的高亮词收集</div>';
+                return;
+            }
+            clueModalBody.innerHTML = items.map(block => {
+                const isSelected = state.selectedClueIds.includes(block.id);
+                const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
+                const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
+                return `
+                    <div class="modal-clue ${isSelected ? 'selected' : ''}" data-block="${block.id}">
+                        <div class="modal-clue-name">${block.label}
+                            <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                        </div>
+                        <div class="modal-clue-desc">${block.detail}</div>
+                    </div>
+                `;
+            }).join('');
+            clueModalBody.querySelectorAll('.modal-clue').forEach(el => {
+                el.addEventListener('click', function() {
+                    toggleSelectClue(this.dataset.block);
+                    renderClueModal();
+                    renderClues();
+                });
+            });
+        }
+
+        function handleClueSelect(e) {
+            const el = e.currentTarget;
+            const blockId = el.dataset.block;
+            toggleSelectClue(blockId);
+        }
+
+        function renderItems() {
+            let items = state.allBlocks.filter(b => b.type === 'item');
+            if (items.length === 0) {
+                itemList.innerHTML = '<div class="empty">点击剧情中的高亮词收集物品</div>';
+                itemCountLabel.textContent = `(${state.allBlocks.filter(b=>b.type==='item').length})`;
+                itemCountBadge.textContent = '0';
+                return;
+            }
+            let html = '';
+            items.forEach(block => {
+                const used = state.usedBlockIds.has(block.id);
+                const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
+                const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
+                html += `
+                    <div class="drag-block ${used ? 'used' : ''}" data-block="${block.id}" data-type="item" data-owner="${block.owner}">
+                        ${block.label}
+                        <span class="block-type">物品</span>
+                        <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
+                        <div class="block-detail">${block.detail}</div>
+                    </div>
+                `;
+            });
+            itemList.innerHTML = html;
+            itemCountLabel.textContent = `(${state.allBlocks.filter(b=>b.type==='item').length})`;
+            itemCountBadge.textContent = state.allBlocks.filter(b=>b.type==='item').length;
+        }
+
+        function renderCharacters() {
+            // 仅显示已点击加入的人物
+            let items = state.allBlocks.filter(b =>
+                b.type === 'char' && b.sourceId && state.characters.includes(b.sourceId));
+            if (items.length === 0) {
+                charList.innerHTML = '<div class="empty">点击剧情中的人物高亮词，将其加入人物框</div>';
+                charCountLabel.textContent = '(0)';
+                charCountBadge.textContent = '0';
+                return;
+            }
+            let html = '';
+            items.forEach(block => {
+                const charId = block.sourceId;
+                const data = DATA.characters[charId];
+                if (!data) return;
+                // 与线索/物品卡片样式一致（人物可反复拖动，永不置灰）
+                html += `
+                    <div class="drag-block" data-block="${block.id}" data-type="char" data-owner="${block.owner}">
+                        ${data.name}
+                        <span class="block-type">人物</span>
+                        <span class="owner-tag all">${data.role}</span>
+                        <div class="block-detail">${data.desc}　${data.info}</div>
+                    </div>
+                `;
+            });
+            charList.innerHTML = html;
+            charCountLabel.textContent = `(${items.length})`;
+            charCountBadge.textContent = items.length;
+        }
+
+        // 刷新所有拖拽块的 draggable 属性
+        function refreshDraggable() {
+            document.querySelectorAll('.drag-block:not(.used)').forEach(el => {
+                el.setAttribute('draggable', 'true');
+            });
+        }
+
+        // ---------- 高亮点击 ----------
+        function handleClueClick(e) {
+            const el = e.currentTarget;
+            const id = el.dataset.clue;
+            if (state.clues.find(c => c.id === id) || state.items.find(i => i.id === id)) return;
+            const owner = currentSceneOwner || 'wu';
+            let added = false;
+            let kind = '';
+            let name = id;
+            if (DATA.items[id]) {
+                added = addItem(id, owner);
+                kind = '物品';
+                name = DATA.items[id].name;
+            } else if (DATA.clues[id]) {
+                added = addClue(id, owner);
+                kind = '线索';
+                name = DATA.clues[id].name;
+            }
+            if (added) {
+                // 移除该高亮（可能已被重渲染移除，需容错）
+                const parent = el.parentNode;
+                if (parent) {
+                    const text = el.textContent;
+                    const textNode = document.createTextNode(text);
+                    parent.replaceChild(textNode, el);
+                    parent.normalize();
+                }
+            }
+        }
+
+        // ---------- 检查完成 ----------
+        function checkAllFilled() {
+            const scene = SCENES[state.scene];
+            const cfg = (scene && scene.slotConfigs) || [];
+            const allFilled = cfg.length > 0 && cfg.every(c => state.usedBlockIds.has(c.expected));
+            if (allFilled && scene && scene.onComplete) {
+                setTimeout(() => scene.onComplete(), 400);
+            }
+            updateCounts();
+        }
+
+        function updateCounts() {
+            const total = state.slotConfigs.length;
+            const filled = state.slotConfigs.filter(c => state.usedBlockIds.has(c.expected)).length;
+            fillCount.textContent = filled;
+            totalSlots.textContent = total || state.totalSlots;
+            const usedReason = state.allBlocks.filter(b => b.type === 'reason' && state.usedBlockIds.has(b.id));
+            reasonCount.textContent = usedReason.length;
+        }
+
+        // ---------- 加载场景 ----------
+        function loadScene(sceneId) {
+            state.scene = sceneId;
+            pendingScene = null;
+            const scene = SCENES[sceneId];
+            if (scene) currentSceneOwner = scene.owner || 'wu';
+            renderAll();
+            setTimeout(() => {
+                const sc = SCENES[sceneId];
+                if (sc && sc.onComplete) {
+                    const cfg = sc.slotConfigs || [];
+                    const allFilled = cfg.length > 0 && cfg.every(c => state.usedBlockIds.has(c.expected));
+                    if (allFilled) sc.onComplete();
+                }
+            }, 400);
+        }
+
+        // ---------- 组合按钮 / 线索弹窗 ----------
+        combineBtn.addEventListener('click', performCombine);
+        clearSelectionBtn.addEventListener('click', clearSelection);
+        openClueModal.addEventListener('click', function() {
+            renderClueModal();
+            clueModalMask.style.display = 'flex';
+        });
+        clueModalClose.addEventListener('click', function() {
+            clueModalMask.style.display = 'none';
+        });
+        clueModalMask.addEventListener('click', function(e) {
+            if (e.target === clueModalMask) clueModalMask.style.display = 'none';
+        });
+
+        // ---------- 拖拽事件委托（核心修复） ----------
+        app.addEventListener('dragstart', function(e) {
+            const target = e.target.closest('.drag-block:not(.used)');
+            if (!target) return;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', target.dataset.block);
+            target.classList.add('dragging');
+        });
+
+        app.addEventListener('dragend', function(e) {
+            const target = e.target.closest('.drag-block');
+            if (target) target.classList.remove('dragging');
+        });
+
+        app.addEventListener('dragover', function(e) {
+            const slot = e.target.closest('.slot:not(.filled)');
+            if (slot) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                slot.classList.add('drag-over');
+            }
+        });
+
+        app.addEventListener('dragleave', function(e) {
+            const slot = e.target.closest('.slot');
+            if (slot) slot.classList.remove('drag-over');
+        });
+
+        app.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const slot = e.target.closest('.slot:not(.filled)');
+            if (!slot) return;
+            slot.classList.remove('drag-over');
+
+            const blockId = e.dataTransfer.getData('text/plain');
+            if (!blockId) {
+                showToast('无效的拖拽', 'error');
+                return;
+            }
+
+            const expected = slot.dataset.expect;
+            if (blockId === expected) {
+                // 匹配成功
+                slot.dataset.filled = 'true';
+                slot.dataset.content = blockId;
+                const block = state.allBlocks.find(b => b.id === blockId);
+                if (block) {
+                    slot.innerHTML = `<span class="slot-content">${block.label}</span>`;
+                    slot.classList.add('filled', 'correct-flash');
+                    state.usedBlockIds.add(blockId);
+                    // 从组合选中移除（已使用的块不再可选）
+                    const selIdx = state.selectedClueIds.indexOf(blockId);
+                    if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
+                    // 人物块可反复拖动填空，不标记已使用；其余块标记为已使用（防止重复拖动）
+                    if (block.type !== 'char') {
+                        document.querySelectorAll(`.drag-block[data-block="${blockId}"]`).forEach(el => {
+                            el.classList.add('used');
+                            el.setAttribute('draggable', 'false');
+                        });
+                    }
+                    showToast(`✓ 填入「${block.label}」成功！`, 'success');
+                    // 立即刷新各面板，不等整体刷新
+                    renderClues();
+                    renderItems();
+                    renderCharacters();
+                    updateCounts();
+                    checkAllFilled();
+                    // 重新刷新拖拽属性
+                    refreshDraggable();
+                    // 填空正确后：解除阻塞，等待玩家点击推进下一行
+                    if (blocked) {
+                        const lineEl = (function() {
+                            let el = slot.parentNode;
+                            while (el && el.parentNode !== storyEl) el = el.parentNode;
+                            return el;
+                        })();
+                        const stillEmpty = lineEl ? lineEl.querySelector('.slot:not(.filled)') : false;
+                        if (!stillEmpty) {
+                            blocked = false;
+                            storyHint.textContent = '▾ 点击空白处推进剧情';
+                        }
+                    }
+                }
+            } else {
+                slot.classList.add('wrong-flash');
+                showToast('❌ 这个块不适合这个位置，请尝试其他组合', 'error');
+                setTimeout(() => slot.classList.remove('wrong-flash'), 500);
+            }
+        });
+
+        // ---------- 启动 ----------
+        loadScene('wu_start');
+    </script>
+</body>
+</html>
