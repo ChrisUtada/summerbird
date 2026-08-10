@@ -1510,6 +1510,11 @@
             // 底部推进提示（放最后，避免被裁剪循环移除）
             storyEl.appendChild(storyHint);
             storyHint.textContent = '▾ 点击空白处推进剧情';
+
+            // 只有标题行的场景：直接视为读完，自动完成
+            if (lineIndex >= storyDom.length) {
+                completeScene(SCENES[state.scene]);
+            }
         }
 
         // 笔记高亮点击：弹出悬浮窗（未解锁时提示）
@@ -1633,9 +1638,13 @@
                     showToast('此处需要填入线索才能继续', '');
                     return;
                 }
-                // 读完最后一行且本行无未填槽：场景自动完成（触发跳转等）
+                // 读完最后一行：全部填空位都已填入才视为场景完成
                 if (lineIndex >= storyDom.length) {
-                    completeScene(SCENES[state.scene]);
+                    const scene = SCENES[state.scene];
+                    const cfg = (scene && scene.slotConfigs) || [];
+                    if (cfg.every(c => state.usedBlockIds.has(c.expected))) {
+                        completeScene(scene);
+                    }
                 }
             });
         }
@@ -1921,17 +1930,7 @@
             }
         }
 
-        // ---------- 检查完成 ----------
-        function checkAllFilled() {
-            const scene = SCENES[state.scene];
-            const cfg = (scene && scene.slotConfigs) || [];
-            const allFilled = cfg.length > 0 && cfg.every(c => state.usedBlockIds.has(c.expected));
-            if (allFilled && scene) {
-                setTimeout(() => completeScene(scene), 400);
-            }
-            updateCounts();
-        }
-
+        // ---------- 场景完成统一规则：剧情读到结尾即完成（填空是途中的阻塞关） ----------
         function updateCounts() {
             const items = state.allBlocks.filter(b => b.type === 'reason' && !state.usedBlockIds.has(b.id));
             reasonCount.textContent = items.length;
@@ -1944,14 +1943,6 @@
             const scene = SCENES[sceneId];
             if (scene) currentSceneOwner = scene.owner || 'wu';
             renderAll();
-            setTimeout(() => {
-                const sc = SCENES[sceneId];
-                if (sc) {
-                    const cfg = sc.slotConfigs || [];
-                    const allFilled = cfg.length > 0 && cfg.every(c => state.usedBlockIds.has(c.expected));
-                    if (allFilled) completeScene(sc);
-                }
-            }, 400);
         }
 
         // ---------- 组合按钮 / 线索选择 ----------
@@ -2027,7 +2018,6 @@
                     renderItems();
                     renderCharacters();
                     updateCounts();
-                    checkAllFilled();
                     // 重新刷新拖拽属性
                     refreshDraggable();
                     // 填空正确后：解除阻塞，等待玩家点击推进下一行
@@ -2041,6 +2031,14 @@
                         if (!stillEmpty) {
                             blocked = false;
                             storyHint.textContent = '▾ 点击空白处推进剧情';
+                        }
+                    }
+                    // 若剧情已读到结尾，最后一个槽填满即完成场景
+                    if (lineIndex >= storyDom.length) {
+                        const scene = SCENES[state.scene];
+                        const cfg = (scene && scene.slotConfigs) || [];
+                        if (cfg.every(c => state.usedBlockIds.has(c.expected))) {
+                            completeScene(scene);
                         }
                     }
                 }
