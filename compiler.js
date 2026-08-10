@@ -43,6 +43,25 @@
         return null;
     }
 
+    // 中文标签符号 → 英文内部表示（{人:}/{线:}/{物:}/{记:}/{填:}）
+    // 支持两种形式：{线:青团}（名字即文字）或 {线:青团}青团{/}（闭合形式）
+    const CN_HL_CLOSED = /\{([人线物记]):([^{}]+)\}([\s\S]*?)\{\/\}/g;
+    const CN_HL_OPEN = /\{([人线物记]):([^{}]+)\}/g;
+    const CN_SLOT_RE = /\{填:([^}]+)\}/g;
+    const CN_MAP = { 人: 'c', 线: 'k', 物: 'k', 记: 'n' };
+    function translateCN(text) {
+        text = text.replace(CN_HL_CLOSED, function (all, kind, id, content) {
+            return '{' + CN_MAP[kind] + ':' + id + '}' + content + '{/}';
+        });
+        text = text.replace(CN_HL_OPEN, function (all, kind, id) {
+            return '{' + CN_MAP[kind] + ':' + id + '}' + id + '{/}';
+        });
+        text = text.replace(CN_SLOT_RE, function (all, ref) {
+            return '【填空:' + ref + '】';
+        });
+        return text;
+    }
+
     function resolveSpeaker(token, ctx) {
         const speakers = ctx.speakers || {};
         if (speakers[token]) return { cls: token, name: speakers[token] };
@@ -55,6 +74,7 @@
 
     // 行内标记 → HTML
     function inline(text, blocks, slotConfigs, nextSlotId, ctx) {
+        text = translateCN(text);
         text = text.replace(HL_RE, function (all, kind, id, content) {
             const cid = id.trim();
             if (kind === 'c') {
@@ -69,11 +89,8 @@
             return '<span class="note-highlight" data-note="' + cid + '">' + content + '</span>';
         });
         text = text.replace(SLOT_RE, function (all, ref) {
-            const block = resolveBlock(ref.trim(), blocks);
-            if (!block) {
-                warn(ctx, '填空「' + ref.trim() + '」未找到对应块（检查 initBlocks）');
-                return all;
-            }
+            // 宽容处理：块未定义时仍生成填空位（id=ref），由编辑器自动补齐 initBlocks
+            const block = resolveBlock(ref.trim(), blocks) || { id: ref.trim(), label: ref.trim() };
             const slotId = nextSlotId();
             slotConfigs.push({ id: slotId, expected: block.id, label: block.label });
             return '<span class="slot" data-slot="' + slotId + '" data-expect="' + block.id +
