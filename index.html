@@ -430,8 +430,6 @@
             color: #d4c8b8;
             line-height: 1.8;
             margin-bottom: 10px;
-            padding-left: 10px;
-            border-left: 2px solid #3a332b;
             text-align: justify;
         }
         .hist-scene-body .hist-line:first-child {
@@ -1228,7 +1226,7 @@
             toast.textContent = text;
             toast.className = 'toast show ' + type;
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
         }
 
         // ---------- 核心操作 ----------
@@ -1250,7 +1248,7 @@
                 });
             }
             renderAll();
-            showToast(`已收集线索：${DATA.clues[id].name}`, 'success');
+            showToast(`${DATA.clues[id].name}已记录`, 'success');
             return true;
         }
 
@@ -1272,7 +1270,7 @@
                 });
             }
             renderAll();
-            showToast(`已收集物品：${DATA.items[id].name}`, 'success');
+            showToast(`${DATA.items[id].name}已记录`, 'success');
             return true;
         }
 
@@ -1301,7 +1299,6 @@
                 });
             });
             renderAll();
-            showToast(`解锁笔记：${DATA.notes[id].name}`, 'success');
             return true;
         }
 
@@ -1331,7 +1328,7 @@
                 });
             });
             renderAll();
-            showToast(`人物加入：${DATA.characters[id].name}`, 'success');
+            showToast(`${DATA.characters[id].name}已记录`, 'success');
             return true;
         }
 
