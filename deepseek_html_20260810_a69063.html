@@ -318,6 +318,23 @@
             letter-spacing: 2px;
             flex-shrink: 0;
         }
+        .modal-close {
+            background: #2a241d;
+            border: 1px solid #5a4a32;
+            color: #f0c060;
+            padding: 4px 16px;
+            border-radius: 16px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            border-color: #d65a3c;
+            color: #faf4ea;
+            background: #d65a3c;
+        }
         .modal-body {
             padding: 16px 20px;
             overflow-y: auto;
@@ -976,7 +993,6 @@
                     <div class="combo-slots" id="comboSlots"></div>
                     <div class="combo-btns">
                         <button class="btn-combine" id="combineBtn" disabled>组合推理</button>
-                        <button class="btn-clear" id="openClueModal">选择线索</button>
                         <button class="btn-clear" id="clearSelection">清空</button>
                     </div>
                     <!-- 推理结果 -->
@@ -1019,7 +1035,7 @@
         <div class="modal-box">
             <div class="modal-head">
                 <span>选择线索</span>
-                <button class="btn-clear" id="clueModalClose">关闭</button>
+                <button class="modal-close" id="clueModalClose">关闭</button>
             </div>
             <div class="modal-body" id="clueModalBody"></div>
         </div>
@@ -1036,7 +1052,7 @@
         <div class="modal-box">
             <div class="modal-head">
                 <span>剧情回顾</span>
-                <button class="btn-clear" id="historyClose">关闭</button>
+                <button class="modal-close" id="historyClose">关闭</button>
             </div>
             <div class="modal-body" id="historyBody"></div>
         </div>
@@ -1155,7 +1171,6 @@
         const clueModalMask = document.getElementById('clueModalMask');
         const clueModalBody = document.getElementById('clueModalBody');
         const clueModalClose = document.getElementById('clueModalClose');
-        const openClueModal = document.getElementById('openClueModal');
         const comboSlots = document.getElementById('comboSlots');
         const clueCountLabel = document.getElementById('clueCountLabel');
         const reasonTitleCount = document.getElementById('reasonTitleCount');
@@ -1945,7 +1960,8 @@
                 });
             });
             document.getElementById('comboAddSlot').addEventListener('click', function() {
-                openClueModal.click();
+                renderClueModal();
+                clueModalMask.style.display = 'flex';
             });
 
             // 推理结果列表（reason 块，可拖拽填空）
@@ -2143,10 +2159,6 @@
         // ---------- 组合按钮 / 线索弹窗 ----------
         combineBtn.addEventListener('click', performCombine);
         clearSelectionBtn.addEventListener('click', clearSelection);
-        openClueModal.addEventListener('click', function() {
-            renderClueModal();
-            clueModalMask.style.display = 'flex';
-        });
         clueModalClose.addEventListener('click', function() {
             clueModalMask.style.display = 'none';
         });
