@@ -47,7 +47,6 @@
     button.primary:hover { background: #e06a48; color: #fff; }
     button.danger:hover { border-color: #b5432a; color: #e08070; }
     select { cursor: pointer; }
-    #rewardText { width: 300px; background: #12100e; }
     #validateBox { padding: 3px 14px; font-size: 12px; max-height: 60px; overflow-y: auto; flex-shrink: 0; }
     #validateBox.ok { color: #8aca8a; }
     #validateBox.err { color: #e08070; background: rgba(181, 67, 42, 0.12); }
@@ -174,7 +173,6 @@
         <option value="all">线路：通用</option>
     </select>
     <select id="sceneGoto" title="完成后跳转"></select>
-    <input id="rewardText" placeholder="完成奖励（符号）如：{线:临水楼}{记:临水楼事件}" title="场景完成奖励（用符号标记）" />
     <span class="tb-right">
         <span id="saveState">就绪</span>
         <button id="btnSceneAdd" title="新建场景">+ 场景</button>
@@ -233,7 +231,7 @@
     const TYPE_LABEL = { char: '人物', clue: '线索', item: '物品', note: '笔记', block: '填空' };
 
     // ---------- 编辑态数据 ----------
-    let ED = null; // { startScene, scenes:[{id,owner,bg,story,goto,nextHint,rewardText}], combos:[{a,b,block,note}], entries:[{type,name,desc}] }
+    let ED = null; // { startScene, scenes:[{id,owner,bg,story,goto,nextHint}], combos:[{a,b,block,note}], entries:[{type,name,desc}] }
     let currentSceneId = null;
     let saveTimer = null;
 
@@ -241,7 +239,7 @@
     function defaultED() {
         return {
             startScene: 'scene_1',
-            scenes: [{ id: 'scene_1', owner: 'wu', bg: 'cloudy', story: '# 第一章', goto: null, nextHint: '', rewardText: '' }],
+            scenes: [{ id: 'scene_1', owner: 'wu', bg: 'cloudy', story: '# 第一章', goto: null, nextHint: '' }],
             combos: [],
             entries: []
         };
@@ -287,7 +285,6 @@
                 .filter(s => s.id !== currentSceneId)
                 .map(s => '<option value="' + s.id + '"' + (s.id === sc.goto ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>')
                 .join('');
-            $('rewardText').value = sc.rewardText || '';
             $('storyText').value = sc.story || '';
         }
         updatePreview();
@@ -301,7 +298,6 @@
     $('sceneBg').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.bg = this.value; markDirty(); } });
     $('sceneOwner').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.owner = this.value; markDirty(); } });
     $('sceneGoto').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.goto = this.value || null; markDirty(); } });
-    $('rewardText').addEventListener('input', function () { const sc = getScene(); if (sc) { sc.rewardText = this.value; markDirty(); } });
     $('storyText').addEventListener('input', function () {
         const sc = getScene();
         if (!sc) return;
@@ -317,7 +313,7 @@
         if (!input || !input.trim()) return;
         const sid = input.trim();
         if (ED.scenes.find(s => s.id === sid)) { alert('id 已存在'); return; }
-        ED.scenes.push({ id: sid, owner: 'wu', bg: 'cloudy', story: '# 新章节', goto: null, nextHint: '', rewardText: '' });
+        ED.scenes.push({ id: sid, owner: 'wu', bg: 'cloudy', story: '# 新章节', goto: null, nextHint: '' });
         markDirty();
         selectScene(sid);
     });
@@ -463,7 +459,6 @@
     function replaceName(oldName, newName) {
         ED.scenes.forEach(function (sc) {
             sc.story = sc.story.split(oldName).join(newName);
-            if (sc.rewardText) sc.rewardText = sc.rewardText.split(oldName).join(newName);
         });
         ED.combos.forEach(function (c) {
             if (c.a === oldName) c.a = newName;
@@ -619,21 +614,12 @@
                 const be = ED.entries.find(x => x.type === 'block' && x.name === name);
                 return { id: name, type: 'reason', label: name, detail: be ? be.desc : '', owner: 'all' };
             });
-            const rewards = [];
-            const reClue = /\{线:([^}]+)\}/g;
-            while ((m = reClue.exec(sc.rewardText || ''))) rewards.push({ type: 'clue', id: m[1].trim() });
-            const reItem = /\{物:([^}]+)\}/g;
-            while ((m = reItem.exec(sc.rewardText || ''))) rewards.push({ type: 'item', id: m[1].trim() });
-            const reNote = /\{记:([^}]+)\}/g;
-            while ((m = reNote.exec(sc.rewardText || ''))) rewards.push({ type: 'note', id: m[1].trim() });
             return {
                 id: sc.id,
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
                 story: sc.story || '',
                 initBlocks: initBlocks,
-                toasts: [],
-                rewards: rewards,
                 goto: sc.goto || null,
                 nextHint: sc.nextHint || ''
             };
@@ -676,22 +662,15 @@
             const b = nameOf(parts[1], data);
             ED.combos.push({ a: a, b: b, block: combo.block ? combo.block.label : '', note: combo.noteId ? nameOf(combo.noteId, data, 'note') : '' });
         });
-        // 场景：符号转换 + 奖励文本
+        // 场景：符号转换
         (story.scenes || []).forEach(function (sc) {
-            const rewardText = (sc.rewards || []).map(function (r) {
-                if (r.type === 'clue') return '{线:' + nameOf(r.id, data, 'clue') + '}';
-                if (r.type === 'item') return '{物:' + nameOf(r.id, data, 'item') + '}';
-                if (r.type === 'note') return '{记:' + nameOf(r.id, data, 'note') + '}';
-                return '';
-            }).join('');
             ED.scenes.push({
                 id: sc.id,
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
                 story: convertStoryText(sc.story || '', data, sc.initBlocks),
                 goto: sc.goto || null,
-                nextHint: sc.nextHint || '',
-                rewardText: rewardText
+                nextHint: sc.nextHint || ''
             });
         });
     }
