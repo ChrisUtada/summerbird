@@ -406,13 +406,12 @@
 
     // ---------- 词条提取 ----------
     function scanEntries() {
-        const map = {}; // name@type → entry
+        // 基于已有词条去重：只补缺失的，绝不重复累加
         function add(type, name) {
             if (!name || !name.trim()) return;
-            const key = type + '@' + name;
-            if (!map[key]) {
-                map[key] = { type: type, name: name, desc: '' };
-                ED.entries.push(map[key]);
+            const n = name.trim();
+            if (!ED.entries.some(function (e) { return e.type === type && e.name === n; })) {
+                ED.entries.push({ type: type, name: n, desc: '' });
             }
         }
         const charRe = /\{人:([^}]+)\}/g;
