@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>凤尾庄 · 剧本编辑器</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #171310;
+        color: #ddd2c2;
+        font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    /* ---------- 顶栏 ---------- */
+    #topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        background: #211b15;
+        border-bottom: 1px solid #3a332b;
+        flex-shrink: 0;
+    }
+    .brand { font-size: 15px; letter-spacing: 2px; color: #f0c060; }
+    .brand span { color: #d65a3c; }
+    #saveState { font-size: 12px; color: #8a7b64; }
+    .tb-btns { margin-left: auto; display: flex; gap: 8px; }
+    .tb-btns button, .panel-head button, .quick-bar button {
+        background: #2a241d;
+        border: 1px solid #4a4034;
+        color: #d8cbb4;
+        padding: 4px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s;
+    }
+    .tb-btns button:hover, .panel-head button:hover, .quick-bar button:hover {
+        border-color: #d65a3c;
+        color: #f0e6d4;
+    }
+    .tb-btns .primary { background: #d65a3c; border-color: #d65a3c; color: #fff6ea; }
+    .tb-btns .primary:hover { background: #e06a48; color: #fff; }
+    #validateBox { padding: 4px 16px; font-size: 12px; max-height: 90px; overflow-y: auto; flex-shrink: 0; }
+    #validateBox.ok { color: #8aca8a; }
+    #validateBox.err { color: #e08070; background: rgba(181, 67, 42, 0.12); border-top: 1px solid #4a3026; }
+    /* ---------- 布局 ---------- */
+    .layout { flex: 1; display: flex; min-height: 0; }
+    #nav {
+        width: 190px;
+        flex-shrink: 0;
+        background: #1d1813;
+        border-right: 1px solid #3a332b;
+        padding: 10px 8px;
+        overflow-y: auto;
+    }
+    .nav-group { margin-bottom: 12px; }
+    .nav-group-title {
+        font-size: 11px; color: #8a7b64; letter-spacing: 2px;
+        padding: 2px 6px; margin-bottom: 4px;
+    }
+    .nav-item, .nav-scene {
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #c9bb9f;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 2px;
+    }
+    .nav-item:hover, .nav-scene:hover { background: #2a241d; }
+    .nav-item.active, .nav-scene.active { background: #3a2e14; color: #f0c060; }
+    .nav-scene .sc-id { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-scene .sc-arrow { font-size: 11px; color: #8a7b64; padding: 0 2px; }
+    .nav-scene .sc-arrow:hover { color: #f0c060; }
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .panel { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 12px 14px; gap: 8px; }
+    .panel-head { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .panel-head input {
+        background: #211b15; border: 1px solid #3a332b; color: #e8decc;
+        border-radius: 6px; padding: 5px 10px; font-size: 13px; width: 220px;
+    }
+    .hint { font-size: 11px; color: #8a7b64; }
+    /* 快捷插入条 */
+    .quick-bar { display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+    .quick-bar .qb-label { font-size: 12px; color: #8a7b64; }
+    .quick-bar button { padding: 3px 10px; font-size: 12px; }
+    /* 分栏 */
+    .split { flex: 1; display: flex; gap: 10px; min-height: 0; }
+    #storyText {
+        flex: 1;
+        background: #12100e;
+        color: #e6dccb;
+        border: 1px solid #3a332b;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.8;
+        resize: none;
+        outline: none;
+        white-space: pre;
+    }
+    #storyText:focus { border-color: #d65a3c; }
+    /* 预览（游戏剧本样式） */
+    #preview {
+        flex: 1;
+        background: linear-gradient(180deg, #1c1712, #16110d);
+        border: 1px solid #3a332b;
+        border-radius: 8px;
+        padding: 18px 20px;
+        overflow-y: auto;
+        line-height: 1.9;
+        font-size: 15px;
+        color: #e6dccb;
+    }
+    #preview .chapter-title {
+        text-align: center;
+        font-size: 19px;
+        color: #f0c060;
+        letter-spacing: 5px;
+        margin: 14px 0 20px;
+        border-bottom: 1px solid #3a332b;
+        padding-bottom: 12px;
+    }
+    #preview .narr-line { color: #b9ab94; margin-bottom: 8px; }
+    #preview .divider { border: none; border-top: 1px solid #3a332b; margin: 12px 0; }
+    #preview .msg { margin-bottom: 8px; }
+    #preview .msg .speaker { font-weight: bold; margin-right: 6px; }
+    #preview .msg .speaker.wu { color: #a8ccdd; }
+    #preview .msg .speaker.shan { color: #d8b48e; }
+    #preview .msg .speaker.old { color: #c0b090; }
+    #preview .msg .speaker.zhang { color: #cfbd90; }
+    #preview .msg .text { display: inline; }
+    #preview .clue-highlight { color: #e8b84a; font-weight: bold; padding: 0 3px; }
+    #preview .note-highlight { color: #8fd0c0; font-weight: bold; padding: 0 3px; }
+    #preview .char-highlight { color: #d8a8f0; font-weight: bold; padding: 0 3px; }
+    #preview .slot {
+        display: inline-block;
+        min-width: 100px;
+        min-height: 28px;
+        border-bottom: 3px dashed #5a7050;
+        margin: 0 4px;
+        padding: 0 6px;
+        color: #93a980;
+        font-size: 14px;
+        vertical-align: bottom;
+        background: rgba(30, 44, 30, 0.35);
+        border-radius: 0 0 4px 4px;
+        text-align: center;
+    }
+    #preview .slot .placeholder { color: #6d8058; font-size: 12px; }
+    #preview .empty-tip { color: #6d6048; font-size: 13px; padding: 20px 0; text-align: center; }
+    /* 属性表单 */
+    .props {
+        flex-shrink: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        background: #1d1813;
+        border: 1px solid #3a332b;
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+    .props label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #8a7b64; }
+    .props select, .props input {
+        background: #12100e; border: 1px solid #3a332b; color: #e8decc;
+        border-radius: 5px; padding: 4px 6px; font-size: 12px; font-family: inherit;
+    }
+    .props textarea {
+        background: #12100e; border: 1px solid #3a332b; color: #c9bb9f;
+        border-radius: 5px; padding: 4px 6px; font-size: 11px;
+        font-family: 'Consolas', monospace; resize: vertical; line-height: 1.5;
+    }
+    /* 数据面板 */
+    #dataText {
+        flex: 1;
+        background: #12100e;
+        color: #c9bb9f;
+        border: 1px solid #3a332b;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.7;
+        resize: none;
+        outline: none;
+        white-space: pre;
+    }
+    #dataText:focus { border-color: #d65a3c; }
+    .panel-settings label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #8a7b64; max-width: 420px; }
+    .panel-settings select, .panel-settings textarea, .panel-settings input {
+        background: #12100e; border: 1px solid #3a332b; color: #e8decc;
+        border-radius: 5px; padding: 5px 8px; font-size: 12px; font-family: inherit;
+    }
+    #helpText { font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.9; color: #c9bb9f; white-space: pre; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="topbar">
+    <span class="brand">凤尾庄 · <span>剧本编辑器</span></span>
+    <span id="saveState">未修改</span>
+    <div class="tb-btns">
+        <button id="btnValidate">校验</button>
+        <button id="btnImport">导入 story.js</button>
+        <button class="primary" id="btnExport">导出 story.js</button>
+    </div>
+</div>
+<div id="validateBox" class="ok">就绪</div>
+<div class="layout">
+    <div id="nav"></div>
+    <div id="main">
+        <!-- 场景编辑 -->
+        <div class="panel" id="panel-scene">
+            <div class="panel-head">
+                <span class="hint">场景 id</span>
+                <input id="sceneId" placeholder="scene_id" />
+                <span class="hint">（英文小写，全局唯一）</span>
+                <span style="flex:1"></span>
+                <button id="btnSceneAdd">+ 新建场景</button>
+                <button id="btnSceneDelete">删除场景</button>
+            </div>
+            <div class="quick-bar">
+                <span class="qb-label">插入标记：</span>
+                <button data-tpl="title">章节标题</button>
+                <button data-tpl="line">叙述行</button>
+                <button data-tpl="speaker">台词行</button>
+                <button data-tpl="divider">分隔线</button>
+                <button data-tpl="char">人物高亮</button>
+                <button data-tpl="clue">线索高亮</button>
+                <button data-tpl="note">笔记高亮</button>
+                <button data-tpl="slot">填空位</button>
+            </div>
+            <div class="split">
+                <textarea id="storyText" spellcheck="false" placeholder="在此编写剧本（DSL 语法见左侧「DSL 语法帮助」）"></textarea>
+                <div id="preview"><div class="empty-tip">实时预览（游戏风格渲染）</div></div>
+            </div>
+            <div class="props">
+                <label>天气背景
+                    <select id="sceneBg">
+                        <option value="cloudy">阴天</option>
+                        <option value="rain">雨天</option>
+                        <option value="night">深夜</option>
+                    </select>
+                </label>
+                <label>归属线路
+                    <select id="sceneOwner">
+                        <option value="wu">吴秋崖线</option>
+                        <option value="shan">商难线</option>
+                        <option value="all">通用</option>
+                    </select>
+                </label>
+                <label>完成后跳转 goto
+                    <select id="sceneGoto"></select>
+                </label>
+                <label>跳转提示 nextHint
+                    <input id="sceneNextHint" placeholder="▾ 点击进入下一场景" />
+                </label>
+                <label>完成飘字 toasts（JSON 数组）
+                    <textarea id="sceneToasts" rows="3" spellcheck="false"></textarea>
+                </label>
+                <label>完成奖励 rewards（JSON 数组，type: note/clue/item）
+                    <textarea id="sceneRewards" rows="4" spellcheck="false"></textarea>
+                </label>
+                <label>填空位说明（由【填空:块id】自动解析）
+                    <textarea id="sceneSlots" rows="3" readonly></textarea>
+                </label>
+                <label>场景初始块 initBlocks（JSON 数组，供填空位解析与校验）
+                    <textarea id="sceneInitBlocks" rows="4" spellcheck="false"></textarea>
+                </label>
+            </div>
+        </div>
+        <!-- 数据编辑 -->
+        <div class="panel" id="panel-data" style="display:none">
+            <div class="panel-head">
+                <span id="dataTitle" style="font-size:14px;color:#e8decc;">线索</span>
+                <span class="hint">JSON 编辑，保存自动生效</span>
+                <span style="flex:1"></span>
+                <button id="btnDataFormat">格式化</button>
+            </div>
+            <textarea id="dataText" spellcheck="false"></textarea>
+        </div>
+        <!-- 全局设置 -->
+        <div class="panel panel-settings" id="panel-settings" style="display:none">
+            <label>起始场景 startScene
+                <select id="startSceneSel"></select>
+            </label>
+            <label>说话人样式映射 speakers（JSON 对象：样式键 → 角色名）
+                <textarea id="speakersText" rows="5" spellcheck="false"></textarea>
+            </label>
+        </div>
+        <!-- 帮助 -->
+        <div class="panel" id="panel-help" style="display:none">
+            <pre id="helpText">DSL 剧本语法（每行一个块）：
+
+  # 章节标题          章节标题行（场景第一行自动成为章节标题）
+  @张道诚: 台词       台词行（说话人按名字自动匹配颜色样式）
+  ---                 分隔线
+  普通文本            叙述行
+
+行内标记：
+  {c:角色id}文字{/}   人物高亮（玩家点击收集人物）
+  {k:线索或物品id}文字{/}  线索/物品高亮（点击收集）
+  {n:笔记id}文字{/}   笔记高亮（解锁后可查看）
+  【填空:块id】        拖拽填空位（id 需在 initBlocks 或组合产出中定义）
+
+内容数据 id（线索/物品/笔记/角色）在左侧「数据」面板中维护，
+组合（线索 → 推理结果卡片）在「组合」面板中维护。</pre>
+        </div>
+    </div>
+</div>
+<input type="file" id="fileInput" accept=".js,.json" hidden />
+<script src="compiler.js"></script>
+<script src="story.js"></script>
+<script>
+(function () {
+    'use strict';
+    // ---------- 数据 ----------
+    const LS_KEY = 'summerbird-editor-story';
+    const $ = function (id) { return document.getElementById(id); };
+    let STORY = null;
+    let currentSceneId = null;
+    let currentDataKey = null;
+    let dataType = null; // 'scene' | 'data' | 'settings' | 'help'
+    let saveTimer = null;
+
+    // ---------- 初始化 ----------
+    function loadStory() {
+        const base = window.__STORY__ || { startScene: '', speakers: {}, data: { clues: {}, items: {}, notes: {}, characters: {} }, combinations: {}, scenes: [] };
+        try {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+                STORY = JSON.parse(saved);
+                return;
+            }
+        } catch (e) { /* ignore */ }
+        STORY = JSON.parse(JSON.stringify(base));
+    }
+
+    function saveLocal() {
+        try {
+            localStorage.setItem(LS_KEY, JSON.stringify(STORY));
+            $('saveState').textContent = '已自动保存 ' + new Date().toLocaleTimeString();
+        } catch (e) {
+            $('saveState').textContent = '自动保存失败（存储不可用）';
+        }
+    }
+    function markDirty() {
+        $('saveState').textContent = '未保存…';
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveLocal, 500);
+    }
+
+    // ---------- 导航 ----------
+    function renderNav() {
+        const nav = $('nav');
+        let html = '';
+        html += '<div class="nav-group"><div class="nav-group-title">场景</div>';
+        STORY.scenes.forEach(function (sc, i) {
+            html += '<div class="nav-scene' + (dataType === 'scene' && sc.id === currentSceneId ? ' active' : '') + '" data-scene="' + sc.id + '">' +
+                '<span class="sc-id">' + escapeHtml(sc.id) + '</span>' +
+                '<span class="sc-arrow" data-move="-1" title="上移">▲</span>' +
+                '<span class="sc-arrow" data-move="1" title="下移">▼</span></div>';
+        });
+        html += '</div>';
+        html += '<div class="nav-group"><div class="nav-group-title">内容数据</div>';
+        ['clues', 'items', 'notes', 'characters', 'combinations'].forEach(function (k) {
+            const label = { clues: '线索', items: '物品', notes: '笔记', characters: '角色', combinations: '组合' }[k];
+            html += '<div class="nav-item' + (dataType === 'data' && currentDataKey === k ? ' active' : '') + '" data-panel="data" data-key="' + k + '">' + label + '</div>';
+        });
+        html += '</div>';
+        html += '<div class="nav-group"><div class="nav-group-title">全局</div>';
+        html += '<div class="nav-item' + (dataType === 'settings' ? ' active' : '') + '" data-panel="settings">全局设置</div>';
+        html += '<div class="nav-item' + (dataType === 'help' ? ' active' : '') + '" data-panel="help">DSL 语法帮助</div>';
+        html += '</div>';
+        nav.innerHTML = html;
+
+        nav.querySelectorAll('.nav-scene').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                const move = e.target.dataset.move;
+                if (move) {
+                    const idx = STORY.scenes.findIndex(s => s.id === el.dataset.scene);
+                    const to = idx + parseInt(move, 10);
+                    if (to >= 0 && to < STORY.scenes.length) {
+                        const tmp = STORY.scenes[idx];
+                        STORY.scenes[idx] = STORY.scenes[to];
+                        STORY.scenes[to] = tmp;
+                        markDirty();
+                        renderNav();
+                    }
+                    return;
+                }
+                selectScene(el.dataset.scene);
+            });
+        });
+        nav.querySelectorAll('.nav-item').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (el.dataset.panel === 'data') selectData(el.dataset.key);
+                else if (el.dataset.panel === 'settings') selectSettings();
+                else selectHelp();
+            });
+        });
+    }
+
+    // ---------- 场景编辑 ----------
+    function selectScene(id) {
+        if (!STORY.scenes.find(s => s.id === id)) return;
+        currentSceneId = id;
+        dataType = 'scene';
+        showPanel('panel-scene');
+        loadSceneUI();
+        renderNav();
+    }
+    function getScene() {
+        return STORY.scenes.find(s => s.id === currentSceneId);
+    }
+    function loadSceneUI() {
+        const sc = getScene();
+        if (!sc) return;
+        $('sceneId').value = sc.id;
+        $('storyText').value = sc.story || '';
+        $('sceneBg').value = sc.bg || 'cloudy';
+        $('sceneOwner').value = sc.owner || 'wu';
+        $('sceneToasts').value = JSON.stringify(sc.toasts || [], null, 2);
+        $('sceneRewards').value = JSON.stringify(sc.rewards || [], null, 2);
+        $('sceneNextHint').value = sc.nextHint || '';
+        $('sceneInitBlocks').value = JSON.stringify(sc.initBlocks || [], null, 2);
+        renderGotoOptions(sc.goto);
+        updatePreview();
+    }
+    function renderGotoOptions(selected) {
+        const sel = $('sceneGoto');
+        sel.innerHTML = '<option value="">（无跳转）</option>' + STORY.scenes
+            .filter(s => s.id !== currentSceneId)
+            .map(s => '<option value="' + s.id + '"' + (s.id === selected ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>')
+            .join('');
+    }
+    function renderSlotInfo() {
+        const sc = getScene();
+        const slotRe = /【填空:([^】]+)】/g;
+        const refs = [];
+        let m;
+        while ((m = slotRe.exec(sc.story || ''))) {
+            if (refs.indexOf(m[1]) === -1) refs.push(m[1]);
+        }
+        const blocks = sc.initBlocks || [];
+        const info = refs.map(function (ref) {
+            const b = blocks.find(x => x.id === ref) || blocks.find(x => x.label === ref);
+            return ref + (b ? ' → ' + b.label + '（initBlocks 已定义）' : '（⚠ 未在 initBlocks 中定义）');
+        });
+        $('sceneSlots').value = info.length ? info.join('\n') : '（当前文本中没有填空位）';
+    }
+    function updatePreview() {
+        const sc = getScene();
+        const pre = $('preview');
+        if (!sc) {
+            pre.innerHTML = '<div class="empty-tip">请选择或新建场景</div>';
+            return;
+        }
+        const ids = STORY.data || {};
+        const compiled = SBCompiler.compileScenes([sc], {
+            speakers: STORY.speakers || {},
+            ids: {
+                char: ids.characters,
+                clue: Object.assign({}, ids.clues, ids.items),
+                note: ids.notes
+            }
+        });
+        const cs = compiled.scenes[sc.id];
+        if (!cs) {
+            pre.innerHTML = '<div class="empty-tip">编译失败：' + compiled.warnings[0] + '</div>';
+            return;
+        }
+        pre.innerHTML = cs.story.split('\n').map(s => s.trim()).filter(Boolean).join('');
+        renderSlotInfo();
+    }
+
+    // 文本编辑绑定
+    $('storyText').addEventListener('input', function () {
+        const sc = getScene();
+        if (!sc) return;
+        sc.story = this.value;
+        markDirty();
+        updatePreview();
+    });
+    ['sceneId', 'sceneBg', 'sceneOwner', 'sceneNextHint', 'sceneInitBlocks'].forEach(function (fid) {
+        $(fid).addEventListener('input', function () {
+            const sc = getScene();
+            if (!sc) return;
+            if (fid === 'sceneId') {
+                const old = sc.id;
+                const val = this.value.trim();
+                if (val && val !== old) {
+                    if (STORY.scenes.find(s => s.id === val)) {
+                        alert('场景 id 已存在：' + val);
+                        this.value = old;
+                        return;
+                    }
+                    sc.id = val;
+                    currentSceneId = val;
+                    if (STORY.startScene === old) STORY.startScene = val;
+                    STORY.scenes.forEach(function (s) { if (s.goto === old) s.goto = val; });
+                    renderNav();
+                    renderGotoOptions(sc.goto);
+                }
+            } else if (fid === 'sceneBg') sc.bg = this.value;
+            else if (fid === 'sceneOwner') sc.owner = this.value;
+            else if (fid === 'sceneNextHint') sc.nextHint = this.value;
+            else if (fid === 'sceneInitBlocks') {
+                try { sc.initBlocks = JSON.parse(this.value || '[]'); } catch (e) { /* 不保存非法 JSON */ }
+            }
+            markDirty();
+        });
+    });
+    ['sceneToasts', 'sceneRewards'].forEach(function (fid) {
+        $(fid).addEventListener('input', function () {
+            const sc = getScene();
+            if (!sc) return;
+            try {
+                const val = JSON.parse(this.value || '[]');
+                if (!Array.isArray(val)) throw new Error('not array');
+                if (fid === 'sceneToasts') sc.toasts = val;
+                else sc.rewards = val;
+            } catch (e) { /* 非法 JSON 不保存 */ }
+            markDirty();
+        });
+    });
+    $('sceneGoto').addEventListener('change', function () {
+        const sc = getScene();
+        if (!sc) return;
+        sc.goto = this.value || null;
+        markDirty();
+    });
+
+    // 快捷插入
+    const QUICK_TPL = {
+        title: { before: '# ', after: '', sel: 3 },
+        line: { before: '\n', after: '', sel: 1 },
+        speaker: { before: '@张道诚: 「', after: '」', sel: 7 },
+        divider: { before: '---\n', after: '', sel: 0 },
+        char: { before: '{c:角色id}', after: '文字{/}', sel: 3 },
+        clue: { before: '{k:线索id}', after: '文字{/}', sel: 3 },
+        note: { before: '{n:笔记id}', after: '文字{/}', sel: 3 },
+        slot: { before: '【填空:块id】', after: '', sel: 4 }
+    };
+    document.querySelectorAll('.quick-bar button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const t = QUICK_TPL[this.dataset.tpl];
+            const ta = $('storyText');
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const linePrefix = t.before.indexOf('\n') > -1 ? '' : '';
+            const insert = linePrefix + t.before + ta.value.substring(start, end) + t.after;
+            ta.value = ta.value.substring(0, start) + insert + ta.value.substring(end);
+            const cursor = start + t.before.length + (t.sel || 0);
+            ta.focus();
+            ta.setSelectionRange(cursor, cursor);
+            getScene().story = ta.value;
+            markDirty();
+            updatePreview();
+        });
+    });
+
+    // 新建 / 删除场景
+    $('btnSceneAdd').addEventListener('click', function () {
+        let n = 1;
+        let id = 'new_scene';
+        while (STORY.scenes.find(s => s.id === id)) { n++; id = 'new_scene_' + n; }
+        const id2 = prompt('新场景 id（英文小写）：', id);
+        if (!id2 || !id2.trim()) return;
+        const sid = id2.trim();
+        if (STORY.scenes.find(s => s.id === sid)) { alert('id 已存在'); return; }
+        STORY.scenes.push({
+            id: sid,
+            owner: 'wu',
+            bg: 'cloudy',
+            story: '# 新章节',
+            initBlocks: [],
+            toasts: [],
+            rewards: [],
+            goto: null,
+            nextHint: ''
+        });
+        markDirty();
+        selectScene(sid);
+    });
+    $('btnSceneDelete').addEventListener('click', function () {
+        if (!currentSceneId) return;
+        if (!confirm('删除场景 ' + currentSceneId + ' ？（引用它的 goto 不会被修改）')) return;
+        const idx = STORY.scenes.findIndex(s => s.id === currentSceneId);
+        STORY.scenes.splice(idx, 1);
+        if (STORY.startScene === currentSceneId) STORY.startScene = STORY.scenes[0] ? STORY.scenes[0].id : '';
+        markDirty();
+        selectScene(STORY.scenes[0] ? STORY.scenes[0].id : null);
+    });
+
+    // ---------- 数据编辑 ----------
+    const DATA_LABELS = { clues: '线索', items: '物品', notes: '笔记', characters: '角色', combinations: '组合' };
+    function selectData(key) {
+        currentDataKey = key;
+        dataType = 'data';
+        showPanel('panel-data');
+        $('dataTitle').textContent = DATA_LABELS[key] || key;
+        $('dataText').value = JSON.stringify(STORY.data[key], null, 2);
+        renderNav();
+    }
+    $('dataText').addEventListener('input', function () {
+        if (dataType !== 'data') return;
+        try {
+            const val = JSON.parse(this.value || '{}');
+            if (typeof val !== 'object' || val === null) throw new Error('bad');
+            if (currentDataKey === 'combinations') STORY.combinations = val;
+            else STORY.data[currentDataKey] = val;
+            markDirty();
+        } catch (e) { /* 非法 JSON 不保存 */ }
+    });
+    $('btnDataFormat').addEventListener('click', function () {
+        try {
+            $('dataText').value = JSON.stringify(JSON.parse($('dataText').value), null, 2);
+        } catch (e) { alert('JSON 格式有误：' + e.message); }
+    });
+
+    // ---------- 全局设置 ----------
+    function selectSettings() {
+        dataType = 'settings';
+        showPanel('panel-settings');
+        const sel = $('startSceneSel');
+        sel.innerHTML = STORY.scenes.map(s => '<option value="' + s.id + '"' + (s.id === STORY.startScene ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>').join('');
+        $('speakersText').value = JSON.stringify(STORY.speakers || {}, null, 2);
+        renderNav();
+    }
+    $('startSceneSel').addEventListener('change', function () {
+        STORY.startScene = this.value;
+        markDirty();
+    });
+    $('speakersText').addEventListener('input', function () {
+        try {
+            STORY.speakers = JSON.parse(this.value || '{}');
+            markDirty();
+        } catch (e) { /* ignore */ }
+    });
+
+    // ---------- 帮助 ----------
+    function selectHelp() {
+        dataType = 'help';
+        showPanel('panel-help');
+        renderNav();
+    }
+
+    function showPanel(id) {
+        ['panel-scene', 'panel-data', 'panel-settings', 'panel-help'].forEach(function (p) {
+            $(p).style.display = (p === id) ? 'flex' : 'none';
+        });
+    }
+
+    // ---------- 校验 ----------
+    function validate() {
+        const errors = [];
+        const warnings = [];
+        const ids = STORY.data || {};
+        const allClueIds = new Set([].concat(Object.keys(ids.clues || {}), Object.keys(ids.items || {})));
+        const compiled = SBCompiler.compileScenes(STORY.scenes, {
+            speakers: STORY.speakers || {},
+            ids: {
+                char: ids.characters,
+                clue: Object.assign({}, ids.clues, ids.items),
+                note: ids.notes
+            }
+        });
+        compiled.warnings.forEach(function (w) { warnings.push('编译: ' + w); });
+        const sceneIds = new Set(STORY.scenes.map(s => s.id));
+        if (STORY.startScene && !sceneIds.has(STORY.startScene)) errors.push('startScene 不存在: ' + STORY.startScene);
+        const seen = new Set();
+        STORY.scenes.forEach(function (sc) {
+            if (!sc.id) { errors.push('存在无 id 的场景'); return; }
+            if (seen.has(sc.id)) errors.push('场景 id 重复: ' + sc.id);
+            seen.add(sc.id);
+            if (sc.goto && !sceneIds.has(sc.goto)) errors.push('[' + sc.id + '] goto 指向不存在: ' + sc.goto);
+            if (sc.goto === sc.id) errors.push('[' + sc.id + '] goto 指向自身');
+            (sc.rewards || []).forEach(function (r) {
+                if (r.type === 'note' && !ids.notes[r.id]) errors.push('[' + sc.id + '] 奖励笔记不存在: ' + r.id);
+                if (r.type === 'clue' && !ids.clues[r.id]) errors.push('[' + sc.id + '] 奖励线索不存在: ' + r.id);
+                if (r.type === 'item' && !ids.items[r.id]) errors.push('[' + sc.id + '] 奖励物品不存在: ' + r.id);
+            });
+            const blocks = sc.initBlocks || [];
+            const blockIds = new Set(blocks.map(b => b.id));
+            const slotRe = /【填空:([^】]+)】/g;
+            let m;
+            while ((m = slotRe.exec(sc.story || ''))) {
+                if (!blockIds.has(m[1]) && !blocks.find(b => b.label === m[1])) {
+                    errors.push('[' + sc.id + '] 填空「' + m[1] + '」未定义于 initBlocks');
+                }
+            }
+            const hlChar = /data-char="([^"]+)"/g;
+            while ((m = hlChar.exec(compiled.scenes[sc.id] ? compiled.scenes[sc.id].story : ''))) {
+                if (!ids.characters[m[1]]) errors.push('[' + sc.id + '] 人物高亮不存在: ' + m[1]);
+            }
+        });
+        Object.keys(STORY.combinations || {}).forEach(function (key) {
+            const combo = STORY.combinations[key];
+            const parts = key.split('+');
+            if (parts.sort().join('+') !== key) errors.push('组合 key 未排序: ' + key);
+            parts.forEach(function (p) { if (!allClueIds.has(p)) errors.push('组合 ' + key + ' 条目不存在: ' + p); });
+            if (combo.noteId && !ids.notes[combo.noteId]) errors.push('组合 ' + key + ' noteId 不存在: ' + combo.noteId);
+            if (combo.block && (!combo.block.id || !combo.block.label || !combo.block.detail)) errors.push('组合 ' + key + ' block 缺少字段');
+        });
+        const box = $('validateBox');
+        box.className = (errors.length ? 'err' : 'ok');
+        const lines = [].concat(
+            errors.map(function (e) { return '✗ ' + e; }),
+            warnings.map(function (w) { return '⚠ ' + w; })
+        );
+        box.textContent = errors.length || warnings.length
+            ? lines.join('；')
+            : '✓ 校验通过（' + STORY.scenes.length + ' 场景 / ' + Object.keys(STORY.combinations || {}).length + ' 组合）';
+    }
+    $('btnValidate').addEventListener('click', validate);
+
+    // ---------- 导出 / 导入 ----------
+    $('btnExport').addEventListener('click', function () {
+        saveLocal();
+        const content = '/*\n * 由编辑器导出的游戏数据\n */\nwindow.__STORY__ = ' + JSON.stringify(STORY, null, 4) + ';\n';
+        const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'story.js';
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        $('saveState').textContent = '已导出 story.js（请下载后替换游戏目录中的文件）';
+    });
+    $('btnImport').addEventListener('click', function () {
+        $('fileInput').click();
+    });
+    $('fileInput').addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            try {
+                const text = String(reader.result);
+                const parsed = JSON.parse(text.replace(/^[\s\S]*?=\s*/, '').replace(/;\s*$/, ''));
+                if (!parsed.scenes || !parsed.data) throw new Error('缺少 scenes/data 字段');
+                STORY = parsed;
+                currentSceneId = null;
+                saveLocal();
+                renderNav();
+                selectScene(STORY.startScene || (STORY.scenes[0] && STORY.scenes[0].id));
+                validate();
+                $('saveState').textContent = '已导入 ' + file.name;
+            } catch (e) {
+                alert('导入失败：' + e.message);
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+        this.value = '';
+    });
+
+    // ---------- 工具 ----------
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ---------- 启动 ----------
+    loadStory();
+    renderNav();
+    selectScene(STORY.startScene || (STORY.scenes[0] && STORY.scenes[0].id));
+    validate();
+})();
+</script>
+</body>
+</html>
