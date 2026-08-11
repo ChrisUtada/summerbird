@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>凤尾庄 · 暗途 — 完整修复版</title>
     <style>
         /* 完整样式 */
@@ -16,6 +16,7 @@
             color: #ddd2c2;
             font-family: 'Georgia', 'SimSun', 'Songti SC', serif;
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -23,6 +24,8 @@
             position: relative;
             overflow-x: hidden;
             transition: background 1.2s ease;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         /* 天气背景层（位于 #app 之后） */
         .bg-layer {
@@ -368,15 +371,6 @@
             text-underline-offset: 3px;
             text-decoration-thickness: 2px;
             text-decoration-color: #8fd0c0;
-        }
-        .note-highlight.locked {
-            color: inherit;
-            font-weight: normal;
-            cursor: default;
-            padding: 0;
-        }
-        .note-highlight.locked:hover {
-            background: none;
         }
         .char-highlight {
             color: #d8a8f0;
@@ -961,6 +955,230 @@
             border-color: #6aaa6a;
             color: #8aca8a;
         }
+        /* ---------- 填空选择器（触屏点击填充；桌面端拖拽保留，点击槽位同样可用） ---------- */
+        .fill-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 20px;
+        }
+        .fill-modal.open {
+            display: flex;
+        }
+        .fill-panel {
+            width: min(440px, 100%);
+            max-height: 72vh;
+            background: #1d1813;
+            border: 1px solid #4a4034;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .fill-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #3a332b;
+            flex-shrink: 0;
+        }
+        .fill-title {
+            font-size: 14px;
+            color: #e8decc;
+            letter-spacing: 1px;
+        }
+        .fill-close {
+            background: none;
+            border: none;
+            color: #9a8b72;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-family: inherit;
+        }
+        .fill-close:hover {
+            color: #f0e6d4;
+        }
+        .fill-list {
+            overflow-y: auto;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            align-content: start;
+        }
+        .fill-list .empty {
+            grid-column: 1 / -1;
+            color: #8a7b64;
+            font-size: 13px;
+            text-align: center;
+            padding: 10px 0;
+        }
+        .fill-item {
+            background: #262019;
+            border: 1px solid #4a4034;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            color: #efe6d6;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            align-items: center;
+            min-height: 44px;
+        }
+        .fill-item .block-type {
+            font-size: 11px;
+            color: #9cc080;
+            border: 1px solid #3c5344;
+            padding: 0 7px;
+            border-radius: 10px;
+        }
+        .fill-item:active {
+            background: #322a21;
+        }
+        .fill-item.wrong-flash {
+            animation: flashRed 0.5s ease;
+        }
+        .fill-hint {
+            font-size: 12px;
+            color: #8a7b64;
+            padding: 8px 14px 0;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        /* ---------- 存档栏（回顾抽屉内，跨设备传输） ---------- */
+        .save-bar {
+            padding: 12px 16px 14px;
+            border-bottom: 1px solid #262019;
+            flex-shrink: 0;
+        }
+        .save-title {
+            font-size: 12px;
+            color: #a8977d;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        .save-btns {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .save-btns button {
+            background: #241e17;
+            border: 1px solid #4a4034;
+            color: #c2b4a0;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 90px;
+            min-height: 36px;
+        }
+        .save-btns button:hover {
+            border-color: #d65a3c;
+            color: #f0e6d4;
+        }
+        .save-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 20px;
+        }
+        .save-modal.open {
+            display: flex;
+        }
+        .save-panel {
+            width: min(480px, 100%);
+            background: #1d1813;
+            border: 1px solid #4a4034;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            padding: 14px 16px 16px;
+            gap: 10px;
+        }
+        .save-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .save-head .save-title {
+            margin: 0;
+            font-size: 14px;
+            color: #e8decc;
+            letter-spacing: 1px;
+        }
+        .save-close {
+            background: none;
+            border: none;
+            color: #9a8b72;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-family: inherit;
+        }
+        .save-close:hover {
+            color: #f0e6d4;
+        }
+        #saveInput {
+            width: 100%;
+            min-height: 120px;
+            max-height: 40vh;
+            background: #12100e;
+            color: #e6dccb;
+            border: 1px solid #3a332b;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+        }
+        #saveInput:focus {
+            border-color: #d65a3c;
+        }
+        #saveConfirm {
+            background: #d65a3c;
+            border: none;
+            color: #faf4ea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            min-height: 40px;
+        }
+        #saveConfirm:hover {
+            background: #e06a48;
+        }
+        .save-err {
+            font-size: 12px;
+            color: #e08070;
+            min-height: 16px;
+        }
+
         /* 窄屏（<1000px）：放弃书本比例，单列堆叠，抽屉占满一行 */
         @media (max-width: 999px) {
             body {
@@ -984,32 +1202,221 @@
                 box-shadow: none;
             }
             .drawer.open {
-                flex-basis: 420px;
+                flex-basis: 320px;
                 width: 100%;
             }
         }
-        @media (max-width: 750px) {
+        /* 手机（<760px）：经典全屏布局——顶栏 + 剧情主区 + 全屏抽屉 */
+        @media (max-width: 760px) {
+            body {
+                padding: 0;
+                align-items: stretch;
+            }
+            #app {
+                --page-h: auto;
+                width: 100%;
+                height: 100vh;
+                height: 100dvh;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+            .main-layout {
+                flex: 1;
+                min-height: 0;
+                flex-direction: column;
+            }
+            .story-column {
+                flex: 1;
+                min-height: 0;
+                width: 100%;
+            }
             .story-area {
-                max-height: 300px;
-                min-height: 200px;
-                padding: 18px 20px 40px;
+                flex: 1;
+                min-height: 0;
+                max-height: none;
+                padding: 20px 20px 56px;
+                font-size: clamp(15px, 4.4vw, 18px);
+                line-height: 2;
+                overflow: hidden;
+            }
+            .chapter-title {
+                font-size: clamp(17px, 5vw, 21px);
+                margin: 8px 0 16px;
+            }
+            .story-hint {
+                bottom: calc(12px + env(safe-area-inset-bottom));
+                font-size: 13px;
             }
             .top-bar {
                 flex-direction: column;
-                align-items: stretch;
-                gap: 6px;
+                align-items: center;
+                gap: 8px;
+                padding: calc(10px + env(safe-area-inset-top)) 14px 8px;
             }
             .game-title {
-                text-align: center;
+                font-size: 18px;
+                letter-spacing: 4px;
             }
             .status-bar {
                 justify-content: center;
+                gap: 8px;
+                width: 100%;
+            }
+            .btn-drawer,
+            .btn-history {
+                min-height: 42px;
+                min-width: 72px;
+                padding: 4px 16px 12px;
+                font-size: 13px;
+            }
+            .btn-drawer {
+                clip-path: none;
+                border-radius: 20px;
+                border: 1px solid #3a322a;
+                padding: 6px 14px;
+            }
+            .btn-history {
+                min-height: 42px;
+            }
+            /* 抽屉：全屏右侧滑入覆盖层 */
+            .drawer {
+                position: fixed;
+                inset: 0 0 0 auto;
+                width: min(100vw, 480px);
+                height: 100%;
+                z-index: 60;
+                transform: translateX(100%);
+                transition: transform 0.28s ease;
+                box-shadow: -20px 0 40px rgba(0, 0, 0, 0.6);
+                flex-basis: auto;
+            }
+            .drawer.open {
+                transform: translateX(0);
+                flex-basis: auto;
+            }
+            .drawer-head {
+                padding-top: calc(14px + env(safe-area-inset-top));
+                padding-bottom: 14px;
+                font-size: 15px;
+            }
+            .drawer-close {
+                font-size: 24px;
+                padding: 6px 10px;
+            }
+            #clueList,
+            #itemList,
+            #charList {
+                grid-template-columns: 1fr;
+            }
+            .clue-pick {
+                grid-template-columns: 1fr 1fr;
+                max-height: 34vh;
+            }
+            .drag-block {
+                min-height: 46px;
+                padding: 10px 14px;
+                font-size: 15px;
+            }
+            .filter-tabs button {
+                min-height: 38px;
+                padding: 4px 16px;
+            }
+            .combo-btns .btn-combine,
+            .combo-btns .btn-clear,
+            .combine-area .btn-combine,
+            .combine-area .btn-clear {
+                min-height: 42px;
+                font-size: 14px;
+            }
+            .slot {
+                min-height: 34px;
+                min-width: 84px;
+                font-size: 15px;
+                margin: 0 3px;
+            }
+            .toast {
+                top: calc(16px + env(safe-area-inset-top));
+                font-size: 14px;
+            }
+            /* 填空选择器：底部抽屉式 */
+            .fill-modal {
+                align-items: flex-end;
+                padding: 0;
+            }
+            .fill-panel {
+                width: 100%;
+                max-height: 62vh;
+                border-radius: 16px 16px 0 0;
+                border-bottom: none;
+            }
+            .fill-head {
+                padding-top: calc(12px + env(safe-area-inset-top));
+            }
+            .fill-list {
+                padding-bottom: calc(12px + env(safe-area-inset-bottom));
+                grid-template-columns: 1fr;
+            }
+            .fill-item {
+                min-height: 48px;
+                font-size: 16px;
+            }
+            .save-btns button {
+                min-height: 42px;
+                font-size: 13px;
+                min-width: 0;
+            }
+            .save-modal {
+                align-items: flex-end;
+                padding: 0;
+            }
+            .save-panel {
+                width: 100%;
+                border-radius: 16px 16px 0 0;
+                padding-bottom: calc(14px + env(safe-area-inset-bottom));
+            }
+            #saveInput {
+                max-height: 34vh;
             }
         }
         @media (max-width: 450px) {
             .slot {
                 min-width: 70px;
-                font-size: 13px;
+                font-size: 14px;
+            }
+            .game-title {
+                font-size: 16px;
+            }
+        }
+        /* 触屏设备：去除 hover 依赖，避免点击后残留悬停态 */
+        @media (hover: none) and (pointer: coarse) {
+            .clue-highlight:hover,
+            .note-highlight:hover,
+            .char-highlight:hover,
+            .drag-block:hover,
+            .fill-item:hover,
+            .note-item .note-title:hover {
+                background: none;
+                border-color: #4a4034;
+                color: inherit;
+            }
+            .note-item .note-title:hover {
+                color: #e8decc;
+            }
+            .btn-drawer:hover,
+            .btn-history:hover,
+            .drawer-close:hover,
+            .filter-tabs button:hover,
+            .btn-combine:hover,
+            .btn-clear:hover,
+            .combo-btns .btn-combine:hover,
+            .combo-btns .btn-clear:hover,
+            .combine-area .btn-combine:hover,
+            .combine-area .btn-clear:hover {
+                border-color: #4a4034;
+                color: inherit;
+                transform: none;
+                background: inherit;
             }
         }
     </style>
@@ -1044,7 +1451,7 @@
         <div class="main-layout">
             <!-- 中栏：剧情 -->
             <div class="story-column">
-                <div class="story-area" id="storyArea">
+                <div class="story-area" id="storyArea" style="opacity:0;">
                     <div class="narr-line">✦ 点击高亮词收集线索与物品 · 点击蓝绿词查看笔记 · 点击空白处推进剧情 ✦</div>
                     <div class="story-hint" id="storyHint">▾ 点击空白处推进剧情</div>
                 </div>
@@ -1073,6 +1480,15 @@
                         <div id="charList" style="flex:1; overflow-y:auto;"></div>
                     </div>
                     <div class="drawer-sec" id="drawerSecHistory">
+                        <div class="save-bar">
+                            <div class="save-title">存档 · 跨设备传输</div>
+                            <div class="save-btns">
+                                <button id="btnCopySave" title="复制存档文本，可粘贴到其他设备">复制存档</button>
+                                <button id="btnPasteSave" title="粘贴从其他设备复制的存档文本">粘贴导入</button>
+                                <button id="btnExportSave" title="导出存档为 JSON 文件">导出文件</button>
+                                <button id="btnImportSave" title="从 JSON 文件导入存档">导入文件</button>
+                            </div>
+                        </div>
                         <div id="historyBody" style="flex:1; overflow-y:auto;"></div>
                     </div>
                 </div>
@@ -1087,6 +1503,32 @@
         <div class="note-pop-title" id="notePopTitle"></div>
         <div class="note-pop-body" id="notePopBody"></div>
     </div>
+
+    <!-- 填空选择器（触屏点击槽位时弹出，桌面端亦可用） -->
+    <div class="fill-modal" id="fillModal">
+        <div class="fill-panel">
+            <div class="fill-head">
+                <span class="fill-title">选择卡片填入空缺</span>
+                <button class="fill-close" id="fillClose">×</button>
+            </div>
+            <div class="fill-hint">点击下方卡片填入空缺；人物卡可反复使用</div>
+            <div class="fill-list" id="fillList"></div>
+        </div>
+    </div>
+
+    <!-- 存档粘贴导入 -->
+    <div class="save-modal" id="saveModal">
+        <div class="save-panel">
+            <div class="save-head">
+                <span class="save-title">粘贴存档文本</span>
+                <button class="save-close" id="saveClose">×</button>
+            </div>
+            <textarea id="saveInput" spellcheck="false" placeholder="在其他设备点「复制存档」，将文本粘贴到这里"></textarea>
+            <div class="save-err" id="saveErr"></div>
+            <button id="saveConfirm">恢复存档</button>
+        </div>
+    </div>
+    <input type="file" id="saveFileInput" accept=".json,.txt" hidden />
 
     <script src="compiler.js"></script>
     <script src="story.js"></script>
@@ -1147,6 +1589,9 @@
         const drawer = document.getElementById('drawer');
         const drawerTitle = document.getElementById('drawerTitle');
         const drawerClose = document.getElementById('drawerClose');
+        const fillModal = document.getElementById('fillModal');
+        const fillClose = document.getElementById('fillClose');
+        const fillList = document.getElementById('fillList');
 
         let toastTimer = null;
         let currentSceneOwner = 'wu';
@@ -1332,13 +1777,6 @@
                     owner: ownerVal
                 });
             }
-            // 解锁后：剧情中对应的高亮词变为可点击并划线
-            storyDom.forEach(div => {
-                div.querySelectorAll(`.note-highlight[data-note="${id}"]`).forEach(el => {
-                    el.classList.remove('locked');
-                    el.classList.add('collected');
-                });
-            });
             renderAll();
             return true;
         }
@@ -1520,14 +1958,18 @@
                     el.removeEventListener('click', handleClueClick);
                     el.addEventListener('click', handleClueClick);
                 });
-                // 笔记高亮：已解锁才可点击查看，未解锁显示为普通文字
+                // 笔记高亮：hover / 按压显示弹窗内容（点击不拦截，放行推进）
                 div.querySelectorAll('.note-highlight').forEach(el => {
-                    const noteId = el.dataset.note;
-                    const unlocked = state.notes.find(n => n.id === noteId);
-                    el.removeEventListener('click', handleNoteClick);
-                    el.addEventListener('click', handleNoteClick);
-                    if (!unlocked) el.classList.add('locked');
-                    else el.classList.add('collected');
+                    el.removeEventListener('mouseenter', showNotePop);
+                    el.removeEventListener('mouseleave', hideNotePop);
+                    el.removeEventListener('pointerdown', showNotePop);
+                    el.removeEventListener('pointerup', hideNotePop);
+                    el.addEventListener('mouseenter', showNotePop);
+                    el.addEventListener('mouseleave', hideNotePop);
+                    el.addEventListener('pointerdown', showNotePop);
+                    el.addEventListener('pointerup', hideNotePop);
+                    el.addEventListener('pointercancel', hideNotePop);
+                    el.addEventListener('pointerleave', hideNotePop);
                 });
                 // 人物高亮：未加入人物框时高亮可点击，已加入则划线
                 div.querySelectorAll('.char-highlight').forEach(el => {
@@ -1551,6 +1993,8 @@
             lineIndex = 0;
             blocked = false;
             stopTyping();
+            // 初始静态提示行已由 JS 接管，恢复显示（由上层切换淡入）
+            storyEl.style.opacity = '';
 
             // 第一行作为章节标题直接显示（非打字机）
             const title = storyDom[0];
@@ -1568,17 +2012,12 @@
             }
         }
 
-        // 笔记高亮点击：弹出悬浮窗（未解锁时提示）
-        function handleNoteClick(e) {
-            e.stopPropagation();
+        // 笔记高亮：hover / 长按显示弹窗内容
+        function showNotePop(e) {
             const el = e.currentTarget;
             const noteId = el.dataset.note;
             const note = DATA.notes[noteId];
             if (!note) return;
-            if (el.classList.contains('locked')) {
-                showToast('此笔记尚未解锁，可通过线索组合推理获得', '');
-                return;
-            }
             notePopTitle.textContent = note.name;
             notePopBody.textContent = note.detail;
             const rect = el.getBoundingClientRect();
@@ -1594,6 +2033,10 @@
             notePop.style.top = top + 'px';
         }
 
+        function hideNotePop() {
+            notePop.style.display = 'none';
+        }
+
         // 人物高亮点击：加入人物框
         function handleCharClick(e) {
             e.stopPropagation();
@@ -1605,11 +2048,6 @@
                 el.classList.add('collected');
                 el.removeEventListener('click', handleCharClick);
             }
-        }
-
-        // 关闭笔记悬浮窗
-        function closeNotePop() {
-            notePop.style.display = 'none';
         }
 
         // 逐字打字机效果
@@ -1787,10 +2225,14 @@
 
         // 点击空白处：跳过打字 / 推进下一行 / 进入下一场景（被填空阻塞时不可推进）
         storyEl.addEventListener('click', function(e) {
-            if (e.target.closest('.clue-highlight') || e.target.closest('.note-highlight') ||
-                e.target.closest('.char-highlight') || e.target.closest('.slot') ||
+            // 点击未填空槽：弹出填充选择器（触屏 / 桌面通用）
+            const slotEl = e.target.closest('.slot');
+            if (slotEl) {
+                if (!slotEl.classList.contains('filled')) openFillModal(slotEl);
+                return;
+            }
+            if (e.target.closest('.clue-highlight') || e.target.closest('.char-highlight') ||
                 e.target.closest('.drag-block') || e.target.closest('button')) return;
-            closeNotePop();
             if (blocked) {
                 showToast('请先填入空缺内容，才能继续阅读', '');
                 return;
@@ -1806,13 +2248,6 @@
                 return;
             }
             showNextLine();
-        });
-
-        // 点击他处关闭笔记悬浮窗
-        document.addEventListener('click', function(e) {
-            if (notePop.style.display !== 'none' && !e.target.closest('.note-highlight')) {
-                closeNotePop();
-            }
         });
 
         function renderClues() {
@@ -1923,9 +2358,9 @@
             charCountBadge.textContent = items.length;
         }
 
-        // 刷新所有拖拽块的 draggable 属性
+        // 刷新所有拖拽块的 draggable 属性（线索 / 推理 / 物品 / 人物均可拖）
         function refreshDraggable() {
-            document.querySelectorAll('.drag-block:not(.used):not(.clue-item)').forEach(el => {
+            document.querySelectorAll('.drag-block:not(.used)').forEach(el => {
                 el.setAttribute('draggable', 'true');
             });
         }
@@ -2028,6 +2463,105 @@
             if (slot) slot.classList.remove('drag-over');
         });
 
+        // ---------- 填空核心逻辑（拖拽与点击选择器共用） ----------
+        // 尝试用 blockId 填充 slot，成功返回 true
+        function fillSlot(slot, blockId) {
+            const expected = slot.dataset.expect;
+            const block = state.allBlocks.find(b => b.id === blockId);
+            // 支持人物 / 线索 / 推理结果 / 物品任意类型卡片：id 精确匹配或标签（答案）匹配
+            const matched = blockId === expected || (block && slot.dataset.answer && block.label === slot.dataset.answer);
+            if (!matched) return false;
+            // 匹配成功（统一按 slot 期望的块记录已使用）
+            slot.dataset.filled = 'true';
+            slot.dataset.content = expected;
+            const showBlock = state.allBlocks.find(b => b.id === expected) || block;
+            if (!showBlock) return true;
+            slot.innerHTML = `<span class="slot-content">${showBlock.label}</span>`;
+            slot.classList.add('filled', 'correct-flash');
+            state.usedBlockIds.add(expected);
+            // 从组合选中移除（已使用的块不再可选）
+            const selIdx = state.selectedClueIds.indexOf(blockId);
+            if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
+            // 人物块可反复拖动填空，不标记已使用；其余块标记为已使用（防止重复拖动）
+            if (block && block.type !== 'char') {
+                document.querySelectorAll(`.drag-block[data-block="${blockId}"]`).forEach(el => {
+                    el.classList.add('used');
+                    el.setAttribute('draggable', 'false');
+                });
+            }
+            // 立即刷新各面板，不等整体刷新
+            renderClues();
+            renderItems();
+            renderCharacters();
+            updateCounts();
+            // 重新刷新拖拽属性
+            refreshDraggable();
+            // 填空正确后：解除阻塞，等待玩家点击推进下一行
+            if (blocked) {
+                const lineEl = (function() {
+                    let el = slot.parentNode;
+                    while (el && el.parentNode !== storyEl) el = el.parentNode;
+                    return el;
+                })();
+                const stillEmpty = lineEl ? lineEl.querySelector('.slot:not(.filled)') : false;
+                if (!stillEmpty) {
+                    blocked = false;
+                    storyHint.textContent = '▾ 点击空白处推进剧情';
+                }
+            }
+            // 若剧情已读到结尾，最后一个槽填满即完成场景
+            if (lineIndex >= storyDom.length) {
+                const scene = SCENES[state.scene];
+                const cfg = (scene && scene.slotConfigs) || [];
+                if (cfg.every(c => state.usedBlockIds.has(c.expected))) {
+                    completeScene(scene);
+                }
+            }
+            return true;
+        }
+
+        // ---------- 填空选择器（触屏点击填充；桌面端点击槽位同样可用） ----------
+        const BLOCK_TYPE_NAME = { clue: '线索', reason: '推理', item: '物品', char: '人物', note: '笔记' };
+
+        function openFillModal(slotEl) {
+            const candidates = state.allBlocks.filter(b => {
+                if (b.type === 'char') return true;
+                return !state.usedBlockIds.has(b.id);
+            }).filter(b => b.type === 'clue' || b.type === 'reason' || b.type === 'item' || b.type === 'char');
+            if (candidates.length === 0) {
+                fillList.innerHTML = '<div class="empty">没有可用的卡片，请先点击剧情中的高亮词收集，或通过组合推理获得</div>';
+            } else {
+                fillList.innerHTML = '';
+                candidates.forEach(block => {
+                    const item = document.createElement('div');
+                    item.className = 'fill-item';
+                    item.innerHTML = `${block.label}<span class="block-type">${BLOCK_TYPE_NAME[block.type] || '卡片'}</span>`;
+                    item.addEventListener('click', function() {
+                        if (fillSlot(slotEl, block.id)) {
+                            closeFillModal();
+                            showToast(`✓ 填入「${block.label}」成功！`, 'success');
+                        } else {
+                            item.classList.add('wrong-flash');
+                            showToast('❌ 这个块不适合这个位置', 'error');
+                            setTimeout(() => item.classList.remove('wrong-flash'), 500);
+                        }
+                    });
+                    fillList.appendChild(item);
+                });
+            }
+            fillModal.classList.add('open');
+        }
+
+        function closeFillModal() {
+            fillModal.classList.remove('open');
+            fillList.innerHTML = '';
+        }
+
+        fillClose.addEventListener('click', closeFillModal);
+        fillModal.addEventListener('click', function(e) {
+            if (e.target === fillModal) closeFillModal();
+        });
+
         app.addEventListener('drop', function(e) {
             e.preventDefault();
             const slot = e.target.closest('.slot:not(.filled)');
@@ -2040,64 +2574,166 @@
                 return;
             }
 
-            const expected = slot.dataset.expect;
-            const block = state.allBlocks.find(b => b.id === blockId);
-            // 支持人物 / 线索 / 推理结果 / 物品任意类型卡片：id 精确匹配或标签（答案）匹配
-            const matched = blockId === expected || (block && slot.dataset.answer && block.label === slot.dataset.answer);
-            if (matched) {
-                // 匹配成功（统一按 slot 期望的块记录已使用）
-                slot.dataset.filled = 'true';
-                slot.dataset.content = expected;
-                const showBlock = state.allBlocks.find(b => b.id === expected) || block;
-                if (showBlock) {
-                    slot.innerHTML = `<span class="slot-content">${showBlock.label}</span>`;
-                    slot.classList.add('filled', 'correct-flash');
-                    state.usedBlockIds.add(expected);
-                    // 从组合选中移除（已使用的块不再可选）
-                    const selIdx = state.selectedClueIds.indexOf(blockId);
-                    if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
-                    // 人物块可反复拖动填空，不标记已使用；其余块标记为已使用（防止重复拖动）
-                    if (block && block.type !== 'char') {
-                        document.querySelectorAll(`.drag-block[data-block="${blockId}"]`).forEach(el => {
-                            el.classList.add('used');
-                            el.setAttribute('draggable', 'false');
-                        });
-                    }
-                    showToast(`✓ 填入「${showBlock.label}」成功！`, 'success');
-                    // 立即刷新各面板，不等整体刷新
-                    renderClues();
-                    renderItems();
-                    renderCharacters();
-                    updateCounts();
-                    // 重新刷新拖拽属性
-                    refreshDraggable();
-                    // 填空正确后：解除阻塞，等待玩家点击推进下一行
-                    if (blocked) {
-                        const lineEl = (function() {
-                            let el = slot.parentNode;
-                            while (el && el.parentNode !== storyEl) el = el.parentNode;
-                            return el;
-                        })();
-                        const stillEmpty = lineEl ? lineEl.querySelector('.slot:not(.filled)') : false;
-                        if (!stillEmpty) {
-                            blocked = false;
-                            storyHint.textContent = '▾ 点击空白处推进剧情';
-                        }
-                    }
-                    // 若剧情已读到结尾，最后一个槽填满即完成场景
-                    if (lineIndex >= storyDom.length) {
-                        const scene = SCENES[state.scene];
-                        const cfg = (scene && scene.slotConfigs) || [];
-                        if (cfg.every(c => state.usedBlockIds.has(c.expected))) {
-                            completeScene(scene);
-                        }
-                    }
-                }
+            if (fillSlot(slot, blockId)) {
+                const showBlock = state.allBlocks.find(b => b.id === slot.dataset.expect);
+                showToast(`✓ 填入「${showBlock ? showBlock.label : slot.dataset.answer}」成功！`, 'success');
             } else {
                 slot.classList.add('wrong-flash');
                 showToast('❌ 这个块不适合这个位置，请尝试其他组合', 'error');
                 setTimeout(() => slot.classList.remove('wrong-flash'), 500);
             }
+        });
+
+        // ---------- 存档（跨设备传输：复制文本 / 导出文件） ----------
+        const btnCopySave = document.getElementById('btnCopySave');
+        const btnPasteSave = document.getElementById('btnPasteSave');
+        const btnExportSave = document.getElementById('btnExportSave');
+        const btnImportSave = document.getElementById('btnImportSave');
+        const saveModal = document.getElementById('saveModal');
+        const saveClose = document.getElementById('saveClose');
+        const saveInput = document.getElementById('saveInput');
+        const saveErr = document.getElementById('saveErr');
+        const saveFileInput = document.getElementById('saveFileInput');
+        const saveConfirm = document.getElementById('saveConfirm');
+
+        function serializeSave() {
+            return JSON.stringify({
+                v: 1,
+                scene: state.scene,
+                clues: state.clues,
+                items: state.items,
+                notes: state.notes,
+                characters: state.characters,
+                usedBlockIds: Array.from(state.usedBlockIds),
+                allBlocks: state.allBlocks,
+                selectedClueIds: state.selectedClueIds,
+                combinedKeys: state.combinedKeys,
+                completedScenes: Array.from(completedScenes),
+                sceneRecords: sceneRecords,
+                currentSceneOwner: currentSceneOwner
+            });
+        }
+
+        function toBase64(str) {
+            let bin = '';
+            new TextEncoder().encode(str).forEach(function(b) { bin += String.fromCharCode(b); });
+            return btoa(bin);
+        }
+
+        function fromBase64(b64) {
+            const bin = atob(b64.trim());
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new TextDecoder().decode(bytes);
+        }
+
+        function parseSaveText(text) {
+            let json = text.trim();
+            try {
+                json = fromBase64(json);
+            } catch (e) { /* 非 base64，按原始 JSON 处理 */ }
+            return JSON.parse(json);
+        }
+
+        function applySave(save) {
+            if (!save || typeof save !== 'object' || !save.scene || !SCENES[save.scene]) {
+                throw new Error('存档无效或对应场景不存在');
+            }
+            state.scene = save.scene;
+            state.clues = Array.isArray(save.clues) ? save.clues : [];
+            state.items = Array.isArray(save.items) ? save.items : [];
+            state.notes = Array.isArray(save.notes) ? save.notes : [];
+            state.characters = Array.isArray(save.characters) ? save.characters : [];
+            state.usedBlockIds = new Set(Array.isArray(save.usedBlockIds) ? save.usedBlockIds : []);
+            state.allBlocks = Array.isArray(save.allBlocks) ? save.allBlocks : [];
+            state.selectedClueIds = Array.isArray(save.selectedClueIds) ? save.selectedClueIds : [];
+            state.combinedKeys = Array.isArray(save.combinedKeys) ? save.combinedKeys : [];
+            completedScenes = new Set(Array.isArray(save.completedScenes) ? save.completedScenes : []);
+            sceneRecords = Array.isArray(save.sceneRecords) ? save.sceneRecords : [];
+            currentSceneOwner = save.currentSceneOwner || 'wu';
+            pendingScene = null;
+            stopTyping();
+            storySceneId = null;
+            loadScene(state.scene);
+        }
+
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(ta);
+            showToast(ok ? '存档已复制，可在其他设备粘贴导入' : '复制失败，请改用「导出文件」', ok ? 'success' : 'error');
+        }
+
+        btnCopySave.addEventListener('click', function() {
+            const text = toBase64(serializeSave());
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast('存档已复制，可在其他设备粘贴导入', 'success');
+                }, function() {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        });
+
+        btnPasteSave.addEventListener('click', function() {
+            saveInput.value = '';
+            saveErr.textContent = '';
+            saveModal.classList.add('open');
+            saveInput.focus();
+        });
+
+        saveClose.addEventListener('click', function() { saveModal.classList.remove('open'); });
+        saveModal.addEventListener('click', function(e) {
+            if (e.target === saveModal) saveModal.classList.remove('open');
+        });
+
+        saveConfirm.addEventListener('click', function() {
+            const text = saveInput.value;
+            if (!text.trim()) { saveErr.textContent = '请先粘贴存档文本'; return; }
+            try {
+                const save = parseSaveText(text);
+                applySave(save);
+                saveModal.classList.remove('open');
+                showToast('✓ 存档已恢复', 'success');
+            } catch (e) {
+                saveErr.textContent = '导入失败：' + e.message;
+            }
+        });
+
+        btnExportSave.addEventListener('click', function() {
+            const blob = new Blob([serializeSave()], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'summerbird-save.json';
+            a.click();
+            setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+            showToast('已导出存档文件', 'success');
+        });
+
+        btnImportSave.addEventListener('click', function() { saveFileInput.click(); });
+        saveFileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function() {
+                try {
+                    const save = JSON.parse(String(reader.result));
+                    applySave(save);
+                    showToast('✓ 存档已恢复', 'success');
+                } catch (e) {
+                    showToast('导入失败：' + e.message, 'error');
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+            this.value = '';
         });
 
         // ---------- 启动 ----------

@@ -132,6 +132,8 @@
     }
     .combo-row .c-op { color: #8a7b64; font-size: 13px; flex-shrink: 0; }
     .combo-row .c-del { flex-shrink: 0; }
+    .combo-row .c-add,
+    .combo-row .c-part-del { flex-shrink: 0; }
     /* 词条页 */
     #entryList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
     .entry-row {
@@ -220,13 +222,13 @@
     </div>
     <!-- 组合页 -->
     <div class="page" id="page-combo">
-        <div class="hint-line">每一行是一个推理组合：<b style="color:#e8decc">线索A + 线索B → 产出推理卡片</b>，可选择同时解锁笔记。笔记内容在「词条」页的笔记词条中编辑。下拉不足时可先在剧本或词条页添加。</div>
+        <div class="hint-line">每一行是一个推理组合：<b style="color:#e8decc">若干线索 → 产出推理卡片</b>，可点「＋线索」添加更多参与线索、「减线索」移除。笔记不参与组合，在剧情中直接查看。下拉不足时可先在剧本或词条页添加。</div>
         <div id="comboList"></div>
         <div style="flex-shrink:0"><button id="btnComboAdd">＋ 新增组合</button></div>
     </div>
     <!-- 词条页 -->
     <div class="page" id="page-entry">
-        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。线索词条可勾选「组合后删除」：该线索参与组合推理成功后，将从线索栏中移除。</div>
+        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。笔记词条在剧情中直接查看、无需组合解锁。线索词条可勾选「组合后删除」：该线索参与组合推理成功后，将从线索栏中移除。</div>
         <div id="entryList"></div>
     </div>
 </div>
@@ -258,10 +260,25 @@
             const saved = localStorage.getItem(LS_KEY);
             if (saved) {
                 ED = JSON.parse(saved);
-                if (ED && ED.scenes && ED.combos && ED.entries) return;
+                if (ED && ED.scenes && ED.combos && ED.entries) {
+                    migrateCombos();
+                    return;
+                }
             }
         } catch (e) { /* ignore */ }
         ED = defaultED();
+    }
+    // 旧数据迁移：{a, b} → {parts:[...]}，可多线索
+    function migrateCombos() {
+        ED.combos.forEach(function (c) {
+            if (c.parts) return;
+            const parts = [];
+            if (c.a) parts.push(c.a);
+            if (c.b) parts.push(c.b);
+            c.parts = parts;
+            delete c.a;
+            delete c.b;
+        });
     }
     // ---------- 保存 ----------
     let dirty = false;
@@ -439,10 +456,8 @@
             while ((m = slotRe.exec(text))) add('block', m[1]);
         });
         ED.combos.forEach(function (c) {
-            add('clue', c.a);
-            add('clue', c.b);
+            (c.parts || []).forEach(function (p) { add('clue', p); });
             if (c.block) add('block', c.block);
-            if (c.note) add('note', c.note);
         });
     }
     function refreshEntries() {
@@ -452,7 +467,7 @@
     function renderEntries() {
         const list = $('entryList');
         const PLACEHOLDER = {
-            note: '笔记内容（解锁后查看）',
+            note: '笔记内容（剧情中直接查看）',
             block: '推理结果卡片内容',
             char: '人物描述（可空）',
             clue: '线索描述（可空）',
@@ -508,19 +523,16 @@
             sc.story = sc.story.split(oldName).join(newName);
         });
         ED.combos.forEach(function (c) {
-            if (c.a === oldName) c.a = newName;
-            if (c.b === oldName) c.b = newName;
+            c.parts = (c.parts || []).map(function (p) { return p === oldName ? newName : p; });
             if (c.block === oldName) c.block = newName;
-            if (c.note === oldName) c.note = newName;
         });
         ED.entries.forEach(function (e) { if (e.name === oldName) e.name = newName; });
         refreshEntries();
     }
 
-    // ---------- 组合（下拉行式） ----------
+    // ---------- 组合（动态多线索行式） ----------
     function clueEntries() { return ED.entries.filter(function (e) { return e.type === 'clue' || e.type === 'item'; }); }
     function blockEntries() { return ED.entries.filter(function (e) { return e.type === 'block'; }); }
-    function noteEntries() { return ED.entries.filter(function (e) { return e.type === 'note'; }); }
     function selOptions(field, entries, current) {
         let html = '<select data-f="' + field + '"><option value="">（空）</option>';
         entries.forEach(function (e) {
@@ -542,23 +554,58 @@
         ED.combos.forEach(function (c, idx) {
             const row = document.createElement('div');
             row.className = 'combo-row';
-            row.innerHTML =
-                '<span class="c-op">线索</span>' + selOptions('a', clueEntries(), c.a) +
-                '<span class="c-op">＋</span>' + selOptions('b', clueEntries(), c.b) +
-                '<span class="c-op">→</span>' + selOptions('block', blockEntries(), c.block) +
-                '<span class="c-op">解锁笔记</span>' + selOptions('note', noteEntries(), c.note) +
-                '<button class="c-del danger">删除</button>';
+            // 线索部分：任意数量，可增删
+            c.parts.forEach(function (p, i) {
+                row.insertAdjacentHTML('beforeend',
+                    selOptions('part', clueEntries(), p) +
+                    '<span class="c-op">＋</span>');
+            });
+            if (c.parts.length > 2) {
+                const partDel = document.createElement('button');
+                partDel.textContent = '减线索';
+                partDel.title = '移除最后一个参与线索';
+                partDel.className = 'c-part-del';
+                row.appendChild(partDel);
+            }
+            const addBtn = document.createElement('button');
+            addBtn.textContent = '＋线索';
+            addBtn.title = '添加一个参与线索';
+            addBtn.className = 'c-add';
+            row.appendChild(addBtn);
+            row.insertAdjacentHTML('beforeend',
+                '<span class="c-op">→</span>' +
+                selOptions('block', blockEntries(), c.block) +
+                '<button class="c-del danger">删除</button>');
             list.appendChild(row);
+            // part 下拉按顺序编号
+            row.querySelectorAll('select[data-f="part"]').forEach(function (sel, i) {
+                sel.dataset.i = i;
+            });
             row.querySelectorAll('select').forEach(function (sel) {
                 sel.addEventListener('change', function () {
                     const v = this.value || '';
-                    if (this.dataset.f === 'a') c.a = v;
-                    else if (this.dataset.f === 'b') c.b = v;
-                    else if (this.dataset.f === 'block') c.block = v;
-                    else c.note = v;
+                    if (this.dataset.f === 'part') {
+                        c.parts[parseInt(this.dataset.i, 10)] = v;
+                    } else {
+                        c.block = v;
+                    }
                     markDirty();
                 });
             });
+            addBtn.addEventListener('click', function () {
+                c.parts.push('');
+                renderComboRows();
+                markDirty();
+            });
+            const partDelBtn = row.querySelector('.c-part-del');
+            if (partDelBtn) {
+                partDelBtn.addEventListener('click', function () {
+                    if (c.parts.length <= 2) return;
+                    c.parts.pop();
+                    renderComboRows();
+                    markDirty();
+                });
+            }
             row.querySelector('.c-del').addEventListener('click', function () {
                 ED.combos.splice(idx, 1);
                 renderComboRows();
@@ -567,7 +614,7 @@
         });
     }
     $('btnComboAdd').addEventListener('click', function () {
-        ED.combos.push({ a: '', b: '', block: '', note: '' });
+        ED.combos.push({ parts: ['', ''], block: '' });
         renderComboRows();
         markDirty();
     });
@@ -612,10 +659,14 @@
         });
         // 组合
         ED.combos.forEach(function (c) {
-            if (!names['clue@' + c.a] && !names['item@' + c.a]) errors.push('组合线索不存在: ' + c.a);
-            if (!names['clue@' + c.b] && !names['item@' + c.b]) errors.push('组合线索不存在: ' + c.b);
+            if (!c.parts || c.parts.length < 2) {
+                errors.push('组合需要至少两个参与线索');
+                return;
+            }
+            c.parts.forEach(function (p) {
+                if (!names['clue@' + p] && !names['item@' + p]) errors.push('组合线索不存在: ' + p);
+            });
             if (c.block && !names['block@' + c.block]) errors.push('组合产出卡未使用或缺失: ' + c.block);
-            if (c.note && !names['note@' + c.note]) errors.push('组合笔记不存在: ' + c.note);
         });
         const box = $('validateBox');
         box.className = errors.length ? 'err' : 'ok';
@@ -644,10 +695,10 @@
         });
         const combinations = {};
         ED.combos.forEach(function (c) {
-            if (!c.a || !c.b) return;
-            const key = [c.a, c.b].sort().join('+');
+            if (!c.parts || c.parts.length < 2) return;
+            if (c.parts.some(function (p) { return !p; })) return;
+            const key = c.parts.slice().sort().join('+');
             const entry = {};
-            if (c.note) entry.noteId = c.note;
             if (c.block) {
                 const be = ED.entries.find(x => x.type === 'block' && x.name === c.block);
                 entry.block = { id: c.block, label: c.block, detail: be ? be.desc : '' };
@@ -710,10 +761,8 @@
         // 组合
         Object.keys(story.combinations || {}).forEach(function (key) {
             const combo = story.combinations[key];
-            const parts = key.split('+');
-            const a = nameOf(parts[0], data);
-            const b = nameOf(parts[1], data);
-            ED.combos.push({ a: a, b: b, block: combo.block ? combo.block.label : '', note: combo.noteId ? nameOf(combo.noteId, data, 'note') : '' });
+            const parts = key.split('+').map(function (p) { return nameOf(p, data); });
+            ED.combos.push({ parts: parts, block: combo.block ? combo.block.label : '' });
         });
         // 场景：符号转换
         (story.scenes || []).forEach(function (sc) {
@@ -794,6 +843,7 @@
     window.SBEditor = {
         loadED: function (ed) {
             ED = ed;
+            migrateCombos();
             currentSceneId = ed.scenes && ed.scenes[0] ? ed.scenes[0].id : null;
             renderSceneSel();
             renderComboRows();

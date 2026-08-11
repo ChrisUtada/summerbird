@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>鸣鸟之夏 · 互动封面</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,6 +13,11 @@ html, body {
   overflow: hidden;
   font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
   cursor: default;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 #stage {
   width: 100vw; height: 100vh;
@@ -112,26 +117,78 @@ html, body {
   let state = 'idle'; // idle -> sink -> revealed -> goto
   const SINK_MS = 1800;
 
-  // 伪3D倾斜（用 rAF 节流，避免每帧重排导致卡顿）
-  let pending = false, lastX = 0, lastY = 0;
-  function applyTilt() {
+  // 指针跟随（鼠标 / 触屏统一）：rAF 节流合并倾斜与按压
+  let pending = false, lastX = 0, lastY = 0, pressing = false;
+  let ptrDown = false, startX = 0, startY = 0, movedDist = 0;
+  const TAP_MAX_MOVE = 10; // 位移超过该值视为滑动（拖动倾斜），不触发点击
+
+  function applyTransform() {
     pending = false;
     if (state !== 'idle') return;
     const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
     const dx = (lastX - cx) / cx, dy = (lastY - cy) / cy;
+    const s = pressing ? 0.985 : 1;
     wrapper.style.transform =
-      `rotateY(${dx * 14}deg) rotateX(${-dy * 12}deg) translateZ(${18 + Math.abs(dx) * 8}px)`;
+      `rotateY(${dx * 12}deg) rotateX(${-dy * 10}deg) translateZ(${14 + Math.abs(dx) * 6}px) scale(${s})`;
   }
-  document.addEventListener('mousemove', (e) => {
+  function requestTilt() {
+    if (!pending) { pending = true; requestAnimationFrame(applyTransform); }
+  }
+
+  // 指针按下：记录起点，按压回馈
+  wrapper.addEventListener('pointerdown', (e) => {
     if (state !== 'idle') return;
-    lastX = e.clientX; lastY = e.clientY;
-    if (!pending) { pending = true; requestAnimationFrame(applyTilt); }
-  });
-  document.addEventListener('mouseleave', () => {
-    if (state === 'idle') wrapper.style.transform = 'rotateY(0deg) rotateX(0deg) translateZ(0px)';
+    ptrDown = true;
+    pressing = true;
+    movedDist = 0;
+    startX = e.clientX; startY = e.clientY;
+    lastX = startX; lastY = startY;
+    try { wrapper.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    requestTilt();
   });
 
+  // 指针移动：触屏拖动时封面跟随倾斜（与鼠标跟随一致）
+  document.addEventListener('pointermove', (e) => {
+    if (state !== 'idle') return;
+    lastX = e.clientX; lastY = e.clientY;
+    if (ptrDown) {
+      movedDist = Math.max(movedDist,
+        Math.hypot(e.clientX - startX, e.clientY - startY));
+    }
+    requestTilt();
+  });
+
+  // 指针抬起：回正按压；位移小则视为点击进入
+  document.addEventListener('pointerup', (e) => {
+    if (state !== 'idle' || !ptrDown) return;
+    ptrDown = false;
+    pressing = false;
+    requestTilt();
+    if (movedDist <= TAP_MAX_MOVE) {
+      beginSink();
+    }
+  });
+
+  document.addEventListener('pointercancel', () => {
+    ptrDown = false;
+    pressing = false;
+    requestTilt();
+  });
+
+  // 鼠标离开窗口：回正
+  document.addEventListener('mouseleave', () => {
+    if (state === 'idle' && !ptrDown) {
+      lastX = window.innerWidth / 2; lastY = window.innerHeight / 2;
+      requestTilt();
+    }
+  });
+
+  // 点按兜底（键盘 / 触屏辅助等）
   wrapper.addEventListener('click', () => {
+    if (state === 'idle' && !ptrDown && movedDist <= TAP_MAX_MOVE) beginSink();
+  });
+
+  function beginSink() {
     if (state !== 'idle') return;
     state = 'sink';
     // 直接整张淡出（含阴影），不再用遮罩，避免残影
@@ -142,7 +199,7 @@ html, body {
       wrapper.style.display = 'none';
       reveal.classList.add('show');
     }, SINK_MS);
-  });
+  }
 
   // 引文浮现后点击任意处 -> 淡入到黑 -> 跳转 index.html
   document.addEventListener('click', () => {
