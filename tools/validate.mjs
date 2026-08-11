@@ -22,6 +22,14 @@ const warnings = [];
 const DATA = STORY.data || {};
 const allClueIds = new Set([...Object.keys(DATA.clues || {}), ...Object.keys(DATA.items || {})]);
 
+// 线索字段校验：removeAfterCombine 必须为布尔值
+for (const k of Object.keys(DATA.clues || {})) {
+    const c = DATA.clues[k];
+    if (c.removeAfterCombine !== undefined && typeof c.removeAfterCombine !== 'boolean') {
+        errors.push('[线索 ' + k + '] removeAfterCombine 必须为布尔值');
+    }
+}
+
 const compiled = SBCompiler.compileScenes(STORY.scenes, {
     speakers: STORY.speakers,
     ids: {
@@ -88,7 +96,8 @@ for (const key of Object.keys(STORY.combinations || {})) {
     });
     if (combo.noteId && !DATA.notes[combo.noteId]) errors.push('[组合 ' + key + '] noteId 不存在: ' + combo.noteId);
     if (combo.block) {
-        if (!combo.block.id || !combo.block.label || !combo.block.detail) errors.push('[组合 ' + key + '] block 缺少 id/label/detail');
+        if (!combo.block.id || !combo.block.label) errors.push('[组合 ' + key + '] block 缺少 id/label');
+        if (combo.block.detail === undefined) errors.push('[组合 ' + key + '] block 缺少 detail 字段');
     }
 }
 

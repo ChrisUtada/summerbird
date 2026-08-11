@@ -149,6 +149,16 @@
     }
     .entry-row .e-name { width: 160px; background: #12100e; }
     .entry-row .e-desc { flex: 1; background: #12100e; }
+    .entry-row .e-consume {
+        flex-shrink: 0;
+        font-size: 12px;
+        color: #a8977d;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .entry-row .e-consume input { accent-color: #d65a3c; cursor: pointer; }
     .entry-row .e-del { flex-shrink: 0; }
     .hint-line { font-size: 12px; color: #8a7b64; flex-shrink: 0; }
     .hint-line code { color: #f0c060; background: #241e17; padding: 1px 6px; border-radius: 4px; }
@@ -216,7 +226,7 @@
     </div>
     <!-- 词条页 -->
     <div class="page" id="page-entry">
-        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。</div>
+        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。线索词条可勾选「组合后删除」：该线索参与组合推理成功后，将从线索栏中移除。</div>
         <div id="entryList"></div>
     </div>
 </div>
@@ -456,9 +466,14 @@
         ED.entries.forEach(function (e, idx) {
             const row = document.createElement('div');
             row.className = 'entry-row';
+            let extra = '';
+            if (e.type === 'clue') {
+                extra = '<label class="e-consume"><input type="checkbox" ' + (e.removeAfterCombine ? 'checked' : '') + ' /> 组合后删除</label>';
+            }
             row.innerHTML = '<span class="e-type">' + TYPE_LABEL[e.type] + '</span>' +
                 '<input class="e-name" value="' + escapeHtml(e.name) + '" />' +
                 '<input class="e-desc" value="' + escapeHtml(e.desc || '') + '" placeholder="' + PLACEHOLDER[e.type] + '" />' +
+                extra +
                 '<button class="e-del danger">删除</button>';
             list.appendChild(row);
             const nameInput = row.querySelector('.e-name');
@@ -474,6 +489,13 @@
                 e.desc = this.value;
                 markDirty();
             });
+            const consumeBox = row.querySelector('.e-consume input');
+            if (consumeBox) {
+                consumeBox.addEventListener('change', function () {
+                    e.removeAfterCombine = this.checked;
+                    markDirty();
+                });
+            }
             row.querySelector('.e-del').addEventListener('click', function () {
                 ED.entries.splice(idx, 1);
                 renderEntries();
@@ -611,7 +633,11 @@
         scanEntries();
         const data = { clues: {}, items: {}, notes: {}, characters: {} };
         ED.entries.forEach(function (e) {
-            if (e.type === 'clue') data.clues[e.name] = { name: e.name, desc: e.desc || '' };
+            if (e.type === 'clue') {
+                const clue = { name: e.name, desc: e.desc || '' };
+                if (e.removeAfterCombine) clue.removeAfterCombine = true;
+                data.clues[e.name] = clue;
+            }
             else if (e.type === 'item') data.items[e.name] = { name: e.name, desc: e.desc || '' };
             else if (e.type === 'note') data.notes[e.name] = { name: e.name, detail: e.desc || '' };
             else if (e.type === 'char') data.characters[e.name] = { name: e.name, role: '', desc: e.desc || '', info: '' };
@@ -675,7 +701,9 @@
         ED = { startScene: story.startScene || '', scenes: [], combos: [], entries: [] };
         // 词条
         const data = story.data || {};
-        Object.keys(data.clues || {}).forEach(function (k) { ED.entries.push({ type: 'clue', name: data.clues[k].name || k, desc: data.clues[k].desc || '' }); });
+        Object.keys(data.clues || {}).forEach(function (k) {
+            ED.entries.push({ type: 'clue', name: data.clues[k].name || k, desc: data.clues[k].desc || '', removeAfterCombine: !!data.clues[k].removeAfterCombine });
+        });
         Object.keys(data.items || {}).forEach(function (k) { ED.entries.push({ type: 'item', name: data.items[k].name || k, desc: data.items[k].desc || '' }); });
         Object.keys(data.notes || {}).forEach(function (k) { ED.entries.push({ type: 'note', name: data.notes[k].name || k, desc: data.notes[k].detail || '' }); });
         Object.keys(data.characters || {}).forEach(function (k) { ED.entries.push({ type: 'char', name: data.characters[k].name || k, desc: data.characters[k].desc || '' }); });

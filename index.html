@@ -37,7 +37,7 @@
         }
         body.bg-cloudy .bg-layer {
             background:
-                radial-gradient(ellipse 120% 70% at 50% -10%, #2a2a30 0%, #17171c 45%, #0b0b0e 100%);
+                radial-gradient(ellipse 120% 70% at 50% -10%, #4a4a55 0%, #2c2c36 45%, #16161d 100%);
         }
         body.bg-night .bg-layer {
             background:
@@ -54,13 +54,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            z-index: 20;
             pointer-events: none;
             opacity: 0;
             transition: opacity 1.2s ease;
         }
         body.bg-rain #particleCanvas {
-            opacity: 1;
+            opacity: 0.7;
         }
         .bg-fog {
             position: fixed;
@@ -68,13 +68,13 @@
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: -1;
+            z-index: 21;
             pointer-events: none;
             opacity: 0;
             transition: opacity 1.2s ease;
         }
         body.bg-rain .bg-fog {
-            opacity: 0.5;
+            opacity: 0.35;
             background:
                 radial-gradient(ellipse 90% 50% at 50% 90%, rgba(190, 210, 230, 0.16) 0%, transparent 70%),
                 radial-gradient(ellipse 60% 40% at 20% 70%, rgba(170, 190, 215, 0.10) 0%, transparent 70%);
@@ -86,6 +86,57 @@
             }
             to {
                 transform: translateX(2%);
+            }
+        }
+        /* 阴天：黑色云雾随机飘动（覆盖在书页之上，半透明不挡阅读） */
+        .bg-cloud-veil {
+            position: fixed;
+            top: -20%;
+            left: -20%;
+            right: -20%;
+            bottom: -20%;
+            z-index: 22;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+        body.bg-cloudy .bg-cloud-veil {
+            opacity: 0.55;
+            background:
+                radial-gradient(ellipse 28% 22% at 15% 30%, rgba(5, 7, 12, 0.85) 0%, transparent 70%),
+                radial-gradient(ellipse 22% 18% at 70% 20%, rgba(4, 6, 10, 0.8) 0%, transparent 70%),
+                radial-gradient(ellipse 30% 24% at 85% 65%, rgba(5, 7, 12, 0.75) 0%, transparent 70%),
+                radial-gradient(ellipse 20% 16% at 30% 80%, rgba(4, 6, 10, 0.7) 0%, transparent 70%),
+                radial-gradient(ellipse 25% 20% at 55% 45%, rgba(6, 8, 14, 0.65) 0%, transparent 70%);
+            animation: cloudDriftA 38s ease-in-out infinite alternate;
+        }
+        .bg-cloud-veil::after {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -20%;
+            right: -20%;
+            bottom: -20%;
+            background:
+                radial-gradient(ellipse 24% 20% at 85% 30%, rgba(5, 7, 12, 0.7) 0%, transparent 70%),
+                radial-gradient(ellipse 26% 22% at 20% 55%, rgba(4, 6, 10, 0.75) 0%, transparent 70%),
+                radial-gradient(ellipse 18% 15% at 60% 85%, rgba(5, 7, 12, 0.65) 0%, transparent 70%);
+            animation: cloudDriftB 52s ease-in-out infinite alternate;
+        }
+        @keyframes cloudDriftA {
+            from {
+                transform: translate(0%, 0%) scale(1);
+            }
+            to {
+                transform: translate(-6%, 4%) scale(1.08);
+            }
+        }
+        @keyframes cloudDriftB {
+            from {
+                transform: translate(0%, 0%) scale(1);
+            }
+            to {
+                transform: translate(5%, -5%) scale(1.1);
             }
         }
         /* ---------- 书本外壳（32 开：单页宽:高 ≈ 0.71，摊开两页 + 书脊） ---------- */
@@ -965,6 +1016,7 @@
 </head>
 <body class="bg-cloudy">
     <div class="bg-layer"></div>
+    <div class="bg-cloud-veil"></div>
     <canvas id="particleCanvas"></canvas>
     <div class="bg-fog"></div>
 
@@ -1363,6 +1415,17 @@
                 }
                 if (!state.combinedKeys.includes(key)) state.combinedKeys.push(key);
                 if (combo.noteId) addNote(combo.noteId, 'all');
+                // 组合后按线索配置决定是否从线索栏移除
+                clueIds.forEach(id => {
+                    const cfg = DATA.clues[id];
+                    if (cfg && cfg.removeAfterCombine) {
+                        const bid = 'clue_' + id;
+                        if (!state.usedBlockIds.has(bid)) state.usedBlockIds.add(bid);
+                        // 若该线索已被选中，同步清除选中
+                        const sidx = state.selectedClueIds.indexOf(bid);
+                        if (sidx > -1) state.selectedClueIds.splice(sidx, 1);
+                    }
+                });
                 showToast('✓ 推理成功！新推理结果已生成', 'success');
                 state.selectedClueIds = [];
                 renderAll();
