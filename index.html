@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>凤尾庄 · 暗途 — 完整修复版</title>
+    <title>鸣鸟之夏</title>
     <style>
         /* 完整样式 */
         * {
@@ -26,6 +26,25 @@
             transition: background 1.2s ease;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
+        }
+        /* 统一滚动条主题：所有滚动容器共用一套（故事区/抽屉/列表/弹层） */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #3a322a #12100e;
+        }
+        *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        *::-webkit-scrollbar-track {
+            background: #12100e;
+        }
+        *::-webkit-scrollbar-thumb {
+            background: #3a322a;
+            border-radius: 3px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: #5a4a38;
         }
         /* 天气背景层（位于 #app 之后） */
         .bg-layer {
@@ -302,16 +321,6 @@
             margin: 14px 0 20px;
             border-bottom: 1px solid #3a332b;
             padding-bottom: 12px;
-        }
-        .story-area::-webkit-scrollbar {
-            width: 4px;
-        }
-        .story-area::-webkit-scrollbar-track {
-            background: #12100e;
-        }
-        .story-area::-webkit-scrollbar-thumb {
-            background: #3a322a;
-            border-radius: 4px;
         }
         .story-area .narr-line {
             color: #b9ab94;
@@ -1469,7 +1478,7 @@
     <div id="app">
         <!-- 顶栏 -->
         <div class="top-bar">
-            <div class="game-title">凤尾庄 · <span>暗途</span></div>
+            <div class="game-title">鸣鸟之夏</div>
             <div class="status-bar">
                 <button class="btn-drawer" data-drawer="reason" data-title="推理">
                     推理 <span class="num" id="reasonCount">0</span>
