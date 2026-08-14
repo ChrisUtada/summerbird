@@ -615,6 +615,45 @@
             background: #3a322a;
             border-radius: 4px;
         }
+        /* 抽屉内滚动容器统一风格（与整书暗色主题一致） */
+        #cluePick::-webkit-scrollbar,
+        #clueList::-webkit-scrollbar,
+        #itemList::-webkit-scrollbar,
+        #charList::-webkit-scrollbar,
+        #historyBody::-webkit-scrollbar {
+            width: 5px;
+        }
+        #cluePick::-webkit-scrollbar-track,
+        #clueList::-webkit-scrollbar-track,
+        #itemList::-webkit-scrollbar-track,
+        #charList::-webkit-scrollbar-track,
+        #historyBody::-webkit-scrollbar-track {
+            background: #12100e;
+        }
+        #cluePick::-webkit-scrollbar-thumb,
+        #clueList::-webkit-scrollbar-thumb,
+        #itemList::-webkit-scrollbar-thumb,
+        #charList::-webkit-scrollbar-thumb,
+        #historyBody::-webkit-scrollbar-thumb {
+            background: #4a4034;
+            border-radius: 4px;
+        }
+        #cluePick::-webkit-scrollbar-thumb:hover,
+        #clueList::-webkit-scrollbar-thumb:hover,
+        #itemList::-webkit-scrollbar-thumb:hover,
+        #charList::-webkit-scrollbar-thumb:hover,
+        #historyBody::-webkit-scrollbar-thumb:hover {
+            background: #d65a3c;
+        }
+        /* Firefox 风格 */
+        #cluePick,
+        #clueList,
+        #itemList,
+        #charList,
+        #historyBody {
+            scrollbar-width: thin;
+            scrollbar-color: #4a4034 #12100e;
+        }
         .filter-tabs {
             display: flex;
             gap: 4px;
@@ -2479,6 +2518,11 @@
             slot.innerHTML = `<span class="slot-content">${showBlock.label}</span>`;
             slot.classList.add('filled', 'correct-flash');
             state.usedBlockIds.add(expected);
+            // 拖入的块若与期望 id 不同（label/答案匹配），该块自身也标记为已使用，
+            // 使其从线索/物品/推理列表中移除（人物块可反复拖动，例外）
+            if (block && block.type !== 'char' && blockId !== expected) {
+                state.usedBlockIds.add(blockId);
+            }
             // 从组合选中移除（已使用的块不再可选）
             const selIdx = state.selectedClueIds.indexOf(blockId);
             if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);

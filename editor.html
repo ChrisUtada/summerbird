@@ -512,9 +512,7 @@
                 });
             }
             row.querySelector('.e-del').addEventListener('click', function () {
-                ED.entries.splice(idx, 1);
-                renderEntries();
-                markDirty();
+                removeEntry(e.name);
             });
         });
     }
@@ -528,6 +526,26 @@
         });
         ED.entries.forEach(function (e) { if (e.name === oldName) e.name = newName; });
         refreshEntries();
+    }
+
+    // ---------- 删除词条：同步清理剧本标记与组合引用 ----------
+    function removeEntry(name) {
+        // 从所有场景文本中移除 {类型:name} 标记（保留纯文本）
+        const tagRe = new RegExp('\\{(人|线|物|记|填):' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\}', 'g');
+        ED.scenes.forEach(function (sc) {
+            sc.story = (sc.story || '').replace(tagRe, name);
+        });
+        // 清理引用该词条的组合
+        ED.combos = ED.combos.filter(function (c) {
+            if ((c.parts || []).indexOf(name) > -1) return false;
+            if (c.block === name) return false;
+            return true;
+        });
+        // 删除词条本身
+        ED.entries = ED.entries.filter(function (e) { return e.name !== name; });
+        renderEntries();
+        renderComboRows();
+        markDirty();
     }
 
     // ---------- 组合（动态多线索行式） ----------
