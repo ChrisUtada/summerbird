@@ -650,7 +650,7 @@
     }
 
     // ---------- 组合（动态多线索行式） ----------
-    function clueEntries() { return ED.entries.filter(function (e) { return e.type === 'clue' || e.type === 'item'; }); }
+    function clueEntries() { return ED.entries.filter(function (e) { return e.type === 'clue'; }); }
     function blockEntries() { return ED.entries.filter(function (e) { return e.type === 'block'; }); }
     function selOptions(field, entries, current) {
         let html = '<select data-f="' + field + '"><option value="">（空）</option>';
@@ -783,7 +783,7 @@
                 return;
             }
             c.parts.forEach(function (p) {
-                if (!names['clue@' + p] && !names['item@' + p]) errors.push('组合线索不存在: ' + p);
+                if (!names['clue@' + p]) errors.push('组合参与项必须是线索: ' + p);
             });
             if (c.block && !names['block@' + c.block]) errors.push('组合产出卡未使用或缺失: ' + c.block);
         });
