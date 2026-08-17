@@ -183,6 +183,16 @@
     .entry-row .e-del { flex-shrink: 0; }
     .hint-line { font-size: 12px; color: #8a7b64; flex-shrink: 0; }
     .hint-line code { color: #f0c060; background: #241e17; padding: 1px 6px; border-radius: 4px; }
+    .entry-filter {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+    }
+    .entry-filter select { min-width: 96px; }
+    .entry-filter input { flex: 1; min-width: 160px; background: #12100e; }
+    .entry-filter .ef-count { margin-left: auto; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -247,7 +257,19 @@
     </div>
     <!-- 词条页 -->
     <div class="page" id="page-entry">
-        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。笔记词条在剧情中直接查看、无需组合解锁。线索词条可勾选「组合后删除」：该线索参与组合推理成功后，将从线索栏中移除。</div>
+        <div class="hint-line">从剧本与组合中自动提取的词条（类型：人物/线索/物品/笔记/填空）。修改名称会同步替换所有场景中的引用；填空词条的描述会显示在推理结果卡片上。笔记词条在剧情中直接查看、无需组合解锁。人物/物品/线索可勾选「填空后删除」：该卡片填入填空位后从栏位移除，不勾选则填入后仍保留、可反复使用；线索还可勾选「组合后删除」：参与组合推理成功后从线索栏移除。</div>
+        <div class="entry-filter">
+            <select id="entryTypeFilter" title="按类型筛选">
+                <option value="">全部类型</option>
+                <option value="char">人物</option>
+                <option value="clue">线索</option>
+                <option value="item">物品</option>
+                <option value="note">笔记</option>
+                <option value="block">填空</option>
+            </select>
+            <input id="entrySearch" type="text" placeholder="搜索名称或描述…" spellcheck="false" />
+            <span id="entryCount" class="hint-line ef-count"></span>
+        </div>
         <div id="entryList"></div>
     </div>
 </div>
@@ -264,6 +286,9 @@
     let ED = null; // { startScene, scenes:[{id,owner,bg,story,goto,nextHint}], combos:[{a,b,block,note}], entries:[{type,name,desc}] }
     let currentSceneId = null;
     let saveTimer = null;
+    // 词条筛选条件 + 输入法编辑锁（编辑词条字段时不重建列表）
+    let entryFilter = { type: '', q: '' };
+    let entryEditing = false;
 
     // ---------- 初始化 ----------
     function defaultED() {
@@ -314,7 +339,13 @@
         dirty = true;
         $('saveState').textContent = '● 有未保存修改';
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () { saveLocal(); refreshEntries(); validate(); }, 500);
+        saveTimer = setTimeout(function () {
+            saveLocal();
+            // 输入法（IME）编辑词条时若重建列表会打断拼音选字，此时跳过重建
+            const added = scanEntries();
+            if (added && !entryEditing) refreshEntries();
+            validate();
+        }, 500);
     }
     $('btnSave').addEventListener('click', function () {
         saveLocal();
@@ -453,11 +484,13 @@
     // ---------- 词条提取 ----------
     function scanEntries() {
         // 基于已有词条去重：只补缺失的，绝不重复累加
+        let added = false;
         function add(type, name) {
             if (!name || !name.trim()) return;
             const n = name.trim();
             if (!ED.entries.some(function (e) { return e.type === type && e.name === n; })) {
                 ED.entries.push({ type: type, name: n, desc: '' });
+                added = true;
             }
         }
         const charRe = /\{人:([^}]+)\}/g;
@@ -478,6 +511,7 @@
             (c.parts || []).forEach(function (p) { add('clue', p); });
             if (c.block) add('block', c.block);
         });
+        return added;
     }
     function refreshEntries() {
         scanEntries();
@@ -492,17 +526,36 @@
             clue: '线索描述（可空）',
             item: '物品描述（可空）'
         };
+        const visible = [];
+        ED.entries.forEach(function (e, idx) {
+            if (entryFilter.type && e.type !== entryFilter.type) return;
+            if (entryFilter.q) {
+                const hay = (e.name + ' ' + (e.desc || '')).toLowerCase();
+                if (hay.indexOf(entryFilter.q) === -1) return;
+            }
+            visible.push({ e: e, idx: idx });
+        });
+        $('entryCount').textContent = '共 ' + visible.length + ' / ' + ED.entries.length + ' 条';
         if (ED.entries.length === 0) {
             list.innerHTML = '<div class="hint-line">暂无词条——在剧本中用 {人:} {线:} {物:} {记:} {填:} 标记，或先写线索组合</div>';
             return;
         }
+        if (visible.length === 0) {
+            list.innerHTML = '<div class="hint-line">没有匹配的词条</div>';
+            return;
+        }
         list.innerHTML = '';
-        ED.entries.forEach(function (e, idx) {
+        visible.forEach(function (o) {
+            const e = o.e;
+            const idx = o.idx;
             const row = document.createElement('div');
             row.className = 'entry-row';
             let extra = '';
             if (e.type === 'clue') {
-                extra = '<label class="e-consume"><input type="checkbox" ' + (e.removeAfterCombine ? 'checked' : '') + ' /> 组合后删除</label>';
+                extra = '<label class="e-consume" title="该线索参与组合推理成功后，从线索栏移除"><input type="checkbox" class="e-removeAfterCombine" ' + (e.removeAfterCombine ? 'checked' : '') + ' /> 组合后删除</label>';
+            }
+            if (e.type === 'char' || e.type === 'item' || e.type === 'clue') {
+                extra += '<label class="e-consume" title="该卡片填入填空位后，从栏位中移除；不勾选则填入后仍保留可反复使用"><input type="checkbox" class="e-removeAfterFill" ' + (e.removeAfterFill ? 'checked' : '') + ' /> 填空后删除</label>';
             }
             row.innerHTML = '<span class="e-type">' + TYPE_LABEL[e.type] + '</span>' +
                 '<input class="e-name" value="' + escapeHtml(e.name) + '" />' +
@@ -523,19 +576,66 @@
                 e.desc = this.value;
                 markDirty();
             });
-            const consumeBox = row.querySelector('.e-consume input');
+            const consumeBox = row.querySelector('.e-removeAfterCombine');
             if (consumeBox) {
                 consumeBox.addEventListener('change', function () {
                     e.removeAfterCombine = this.checked;
                     markDirty();
                 });
             }
+            const fillBox = row.querySelector('.e-removeAfterFill');
+            if (fillBox) {
+                fillBox.addEventListener('change', function () {
+                    e.removeAfterFill = this.checked;
+                    markDirty();
+                });
+            }
             row.querySelector('.e-del').addEventListener('click', function () {
-                ED.entries.splice(idx, 1);
-                renderEntries();
-                markDirty();
+                removeEntry(idx);
             });
         });
+    }
+    // 词条筛选
+    $('entryTypeFilter').addEventListener('change', function () { entryFilter.type = this.value; renderEntries(); });
+    $('entrySearch').addEventListener('input', function () { entryFilter.q = this.value.trim().toLowerCase(); renderEntries(); });
+    // 输入法编辑锁：编辑词条字段期间不重建列表，避免打断拼音选字
+    $('entryList').addEventListener('focusin', function (ev) {
+        if (ev.target.classList.contains('e-name') || ev.target.classList.contains('e-desc')) entryEditing = true;
+    });
+    $('entryList').addEventListener('focusout', function (ev) {
+        if (ev.target.classList.contains('e-name') || ev.target.classList.contains('e-desc')) entryEditing = false;
+    });
+    function escapeRe(s) {
+        return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    // 删除词条前清理所有引用，避免 scanEntries 自动补回
+    function stripReferences(e) {
+        const tagMap = { char: '人', clue: '线', item: '物', note: '记', block: '填' };
+        const tag = tagMap[e.type];
+        const esc = escapeRe(e.name);
+        if (tag) {
+            ED.scenes.forEach(function (sc) {
+                if (tag === '填') {
+                    sc.story = sc.story.replace(new RegExp('\\{填:' + esc + '\\}', 'g'), '');
+                } else {
+                    sc.story = sc.story
+                        .replace(new RegExp('\\{' + tag + ':' + esc + '\\}([\\s\\S]*?)\\{\\/\\}', 'g'), '$1')
+                        .replace(new RegExp('\\{' + tag + ':' + esc + '\\}', 'g'), '');
+                }
+            });
+        }
+        ED.combos.forEach(function (c) {
+            c.parts = (c.parts || []).filter(function (p) { return p !== e.name; });
+            if (c.block === e.name) c.block = '';
+        });
+    }
+    function removeEntry(idx) {
+        const e = ED.entries[idx];
+        if (!e) return;
+        stripReferences(e);
+        ED.entries.splice(idx, 1);
+        renderEntries();
+        markDirty();
     }
     function replaceName(oldName, newName) {
         ED.scenes.forEach(function (sc) {
@@ -706,11 +806,20 @@
             if (e.type === 'clue') {
                 const clue = { name: e.name, desc: e.desc || '' };
                 if (e.removeAfterCombine) clue.removeAfterCombine = true;
+                if (e.removeAfterFill) clue.removeAfterFill = true;
                 data.clues[e.name] = clue;
             }
-            else if (e.type === 'item') data.items[e.name] = { name: e.name, desc: e.desc || '' };
+            else if (e.type === 'item') {
+                const item = { name: e.name, desc: e.desc || '' };
+                if (e.removeAfterFill) item.removeAfterFill = true;
+                data.items[e.name] = item;
+            }
             else if (e.type === 'note') data.notes[e.name] = { name: e.name, detail: e.desc || '' };
-            else if (e.type === 'char') data.characters[e.name] = { name: e.name, role: '', desc: e.desc || '', info: '' };
+            else if (e.type === 'char') {
+                const ch = { name: e.name, role: '', desc: e.desc || '', info: '' };
+                if (e.removeAfterFill) ch.removeAfterFill = true;
+                data.characters[e.name] = ch;
+            }
         });
         const combinations = {};
         ED.combos.forEach(function (c) {
@@ -772,11 +881,11 @@
         // 词条
         const data = story.data || {};
         Object.keys(data.clues || {}).forEach(function (k) {
-            ED.entries.push({ type: 'clue', name: data.clues[k].name || k, desc: data.clues[k].desc || '', removeAfterCombine: !!data.clues[k].removeAfterCombine });
+            ED.entries.push({ type: 'clue', name: data.clues[k].name || k, desc: data.clues[k].desc || '', removeAfterCombine: !!data.clues[k].removeAfterCombine, removeAfterFill: !!data.clues[k].removeAfterFill });
         });
-        Object.keys(data.items || {}).forEach(function (k) { ED.entries.push({ type: 'item', name: data.items[k].name || k, desc: data.items[k].desc || '' }); });
+        Object.keys(data.items || {}).forEach(function (k) { ED.entries.push({ type: 'item', name: data.items[k].name || k, desc: data.items[k].desc || '', removeAfterFill: !!data.items[k].removeAfterFill }); });
         Object.keys(data.notes || {}).forEach(function (k) { ED.entries.push({ type: 'note', name: data.notes[k].name || k, desc: data.notes[k].detail || '' }); });
-        Object.keys(data.characters || {}).forEach(function (k) { ED.entries.push({ type: 'char', name: data.characters[k].name || k, desc: data.characters[k].desc || '' }); });
+        Object.keys(data.characters || {}).forEach(function (k) { ED.entries.push({ type: 'char', name: data.characters[k].name || k, desc: data.characters[k].desc || '', removeAfterFill: !!data.characters[k].removeAfterFill }); });
         // 组合
         Object.keys(story.combinations || {}).forEach(function (key) {
             const combo = story.combinations[key];
