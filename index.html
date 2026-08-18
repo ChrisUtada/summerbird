@@ -2681,7 +2681,6 @@
                 if (branchEntry.line) appendBranchLine(slot, branchEntry.line);
                 blocked = true;
                 storyHint.textContent = '▾ 点空位上的 ↺ 回到填空之前，换一种填法';
-                showToast('这条填法引向另一条线索……', '');
                 renderClues(); renderItems(); renderCharacters(); updateCounts(); refreshDraggable();
                 return true;
             }
@@ -2810,9 +2809,7 @@
                 item.addEventListener('click', function () {
                     closePickupChoice();
                     doPickupFill(slot, id, kind, entry);
-                    if (slot.classList.contains('branch-wrong')) {
-                        showToast('这条填法引向另一条线索……', '');
-                    } else {
+                    if (!slot.classList.contains('branch-wrong')) {
                         showToast('✓ 填入「' + nm + '」成功！', 'success');
                     }
                 });
@@ -2869,7 +2866,6 @@
                 // 错误分支：阻塞，等待玩家点 ↺ 回到填空之前重填
                 blocked = true;
                 storyHint.textContent = '▾ 点空位上的 ↺ 回到填空之前，换一种填法';
-                showToast('这条填法引向另一条线索……', '');
             } else {
                 // 解除阻塞
                 if (blocked) {
@@ -2926,8 +2922,7 @@
                 entry = { correct: true };
             }
             doPickupFill(slot, id, kind, entry);
-            if (slot.classList.contains('branch-wrong')) showToast('这条填法引向另一条线索……', '');
-            else {
+            if (!slot.classList.contains('branch-wrong')) {
                 const nm = (kind === 'item' ? (DATA.items[id] && DATA.items[id].name) : (DATA.characters[id] && DATA.characters[id].name)) || id;
                 showToast('✓ 填入「' + nm + '」成功！', 'success');
             }
@@ -2951,9 +2946,7 @@
                     item.addEventListener('click', function() {
                         if (fillSlot(slotEl, block.id)) {
                             closeFillModal();
-                            if (slotEl.classList.contains('branch-wrong')) {
-                                showToast('这条填法引向另一条线索……', '');
-                            } else {
+                            if (!slotEl.classList.contains('branch-wrong')) {
                                 showToast(`✓ 填入「${block.label}」成功！`, 'success');
                             }
                         } else {
@@ -3002,9 +2995,7 @@
             }
 
             if (fillSlot(slot, blockId)) {
-                if (slot.classList.contains('branch-wrong')) {
-                    showToast('这条填法引向另一条线索……', '');
-                } else {
+                if (!slot.classList.contains('branch-wrong')) {
                     const showBlock = state.allBlocks.find(b => b.id === slot.dataset.expect);
                     showToast(`✓ 填入「${showBlock ? showBlock.label : slot.dataset.answer}」成功！`, 'success');
                 }
