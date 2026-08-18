@@ -2354,7 +2354,7 @@
         }
 
         function renderItems() {
-            let items = state.allBlocks.filter(b => b.type === 'item');
+            let items = state.allBlocks.filter(b => b.type === 'item' && !state.usedBlockIds.has(b.id));
             if (items.length === 0) {
                 itemList.innerHTML = '<div class="empty">点击剧情中的高亮词收集物品</div>';
                 itemCountBadge.textContent = '0';
@@ -2362,11 +2362,10 @@
             }
             let html = '';
             items.forEach(block => {
-                const used = state.usedBlockIds.has(block.id);
                 const ownerLabel = block.owner === 'wu' ? '吴秋崖' : block.owner === 'shan' ? '商难' : '通用';
                 const ownerClass = block.owner === 'wu' ? 'wu' : block.owner === 'shan' ? 'shan' : 'all';
                 html += `
-                    <div class="drag-block ${used ? 'used' : ''}" data-block="${block.id}" data-type="item" data-owner="${block.owner}">
+                    <div class="drag-block" data-block="${block.id}" data-type="item" data-owner="${block.owner}">
                         ${block.label}
                         <span class="block-type">物品</span>
                         <span class="owner-tag ${ownerClass}">${ownerLabel}</span>
@@ -2375,13 +2374,13 @@
                 `;
             });
             itemList.innerHTML = html;
-            itemCountBadge.textContent = state.allBlocks.filter(b=>b.type==='item').length;
+            itemCountBadge.textContent = items.length;
         }
 
         function renderCharacters() {
             // 仅显示已点击加入的人物
             let items = state.allBlocks.filter(b =>
-                b.type === 'char' && b.sourceId && state.characters.includes(b.sourceId));
+                b.type === 'char' && b.sourceId && state.characters.includes(b.sourceId) && !state.usedBlockIds.has(b.id));
             if (items.length === 0) {
                 charList.innerHTML = '<div class="empty">点击剧情中的人物高亮词，将其加入人物框</div>';
                 charCountBadge.textContent = '0';
@@ -2392,7 +2391,7 @@
                 const charId = block.sourceId;
                 const data = DATA.characters[charId];
                 if (!data) return;
-                // 与线索/物品卡片样式一致（人物可反复拖动，永不置灰）
+                // 与线索/物品卡片样式一致（未勾选「填空后删除」的人物可反复拖动）
                 html += `
                     <div class="drag-block" data-block="${block.id}" data-type="char" data-owner="${block.owner}">
                         ${data.name}
@@ -2512,6 +2511,14 @@
         });
 
         // ---------- 填空核心逻辑（拖拽与点击选择器共用） ----------
+        // 取卡片对应的数据配置（线索/物品/人物），用于「填空后删除」判定
+        function blockData(block) {
+            if (!block || !block.sourceType) return null;
+            if (block.sourceType === 'clue') return DATA.clues[block.sourceId];
+            if (block.sourceType === 'item') return DATA.items[block.sourceId];
+            if (block.sourceType === 'char') return DATA.characters[block.sourceId];
+            return null;
+        }
         // 尝试用 blockId 填充 slot，成功返回 true
         function fillSlot(slot, blockId) {
             const expected = slot.dataset.expect;
@@ -2535,13 +2542,9 @@
             // 从组合选中移除（已使用的块不再可选）
             const selIdx = state.selectedClueIds.indexOf(blockId);
             if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
-            // 人物块可反复拖动填空，不标记已使用；其余块标记为已使用（防止重复拖动）
-            if (block && block.type !== 'char') {
-                document.querySelectorAll(`.drag-block[data-block="${blockId}"]`).forEach(el => {
-                    el.classList.add('used');
-                    el.setAttribute('draggable', 'false');
-                });
-            }
+            // 按卡片配置决定填入后是否从栏位移除（人物/物品/线索均可配置）
+            const cardCfg = blockData(block);
+            if (cardCfg && cardCfg.removeAfterFill) state.usedBlockIds.add(block.id);
             // 立即刷新各面板，不等整体刷新
             renderClues();
             renderItems();
@@ -2577,10 +2580,9 @@
         const BLOCK_TYPE_NAME = { clue: '线索', reason: '推理', item: '物品', char: '人物', note: '笔记' };
 
         function openFillModal(slotEl) {
-            const candidates = state.allBlocks.filter(b => {
-                if (b.type === 'char') return true;
-                return !state.usedBlockIds.has(b.id);
-            }).filter(b => b.type === 'clue' || b.type === 'reason' || b.type === 'item' || b.type === 'char');
+            // 已使用（含「填空后删除」消耗）的卡片不再作为候选
+            const candidates = state.allBlocks.filter(b => !state.usedBlockIds.has(b.id))
+                .filter(b => b.type === 'clue' || b.type === 'reason' || b.type === 'item' || b.type === 'char');
             if (candidates.length === 0) {
                 fillList.innerHTML = '<div class="empty">没有可用的卡片，请先点击剧情中的高亮词收集，或通过组合推理获得</div>';
             } else {
