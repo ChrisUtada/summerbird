@@ -22,6 +22,13 @@ const warnings = [];
 const DATA = STORY.data || {};
 const allClueIds = new Set([...Object.keys(DATA.clues || {}), ...Object.keys(DATA.items || {})]);
 
+// 分支引用解析：物品/人物/线索 的 id 与 name 都可作为分支键
+const branchRefSet = new Set([...allClueIds, ...Object.keys(DATA.characters || {})]);
+const branchNameToId = {};
+Object.keys(DATA.items || {}).forEach(id => { branchNameToId[DATA.items[id].name || id] = id; });
+Object.keys(DATA.characters || {}).forEach(id => { branchNameToId[DATA.characters[id].name || id] = id; });
+Object.keys(DATA.clues || {}).forEach(id => { if (DATA.clues[id].name) branchNameToId[DATA.clues[id].name] = id; });
+
 // 线索字段校验：removeAfterCombine 必须为布尔值
 for (const k of Object.keys(DATA.clues || {})) {
     const c = DATA.clues[k];
@@ -35,10 +42,11 @@ const compiled = SBCompiler.compileScenes(STORY.scenes, {
     ids: {
         char: DATA.characters,
         clue: Object.assign({}, DATA.clues, DATA.items),
+        item: DATA.items,
         note: DATA.notes
     }
 });
-compiled.warnings.forEach(w => errors.push('[编译] ' + w));
+compiled.warnings.forEach(w => warnings.push('[编译] ' + w));
 
 const scenes = compiled.scenes;
 const ids = Object.keys(scenes);
@@ -63,8 +71,39 @@ for (const id of ids) {
         if (b.type === 'char' && b.sourceId && !DATA.characters[b.sourceId]) errors.push('[' + id + '] 人物块 ' + b.id + ' sourceId 不存在: ' + b.sourceId);
     });
 
+    // 合法的「填空期望块」来源：initBlocks / 组合产出的 block（id 或 label）/ 线索+物品 / 角色
+    const comboBlockNames = new Set();
+    for (const key of Object.keys(STORY.combinations || {})) {
+        const blk = STORY.combinations[key] && STORY.combinations[key].block;
+        if (blk) { if (blk.id) comboBlockNames.add(blk.id); if (blk.label) comboBlockNames.add(blk.label); }
+    }
+    const characterIds = new Set(Object.keys(DATA.characters || {}));
     (sc.slotConfigs || []).forEach(cfg => {
-        if (!blockIds.has(cfg.expected)) errors.push('[' + id + '] 槽 ' + cfg.id + ' 期望块不存在: ' + cfg.expected);
+        if (cfg.pickup) return; // 拾取型空位（物品/人物）由点击收集，无预置块
+        const valid = blockIds.has(cfg.expected) || allClueIds.has(cfg.expected) ||
+            characterIds.has(cfg.expected) || comboBlockNames.has(cfg.expected);
+        if (!valid) errors.push('[' + id + '] 槽 ' + cfg.id + ' 期望块不存在: ' + cfg.expected);
+    });
+
+    // 填空分支校验：分支键应为已知线索/物品/人物或组合结果（id 或 name）
+    const sceneSlotRefs = new Set((sc.slotConfigs || []).map(c => c.ref));
+    const comboNames = new Set();
+    for (const key of Object.keys(STORY.combinations || {})) {
+        const blk = STORY.combinations[key] && STORY.combinations[key].block;
+        if (blk) { if (blk.id) comboNames.add(blk.id); if (blk.label) comboNames.add(blk.label); }
+    }
+    const branchValid = new Set([...branchRefSet, ...comboNames]);
+    Object.keys(sc.slotBranches || {}).forEach(function (ref) {
+        const map = sc.slotBranches[ref];
+        if (!map) return;
+        if (!sceneSlotRefs.has(ref)) warnings.push('[' + id + '] slotBranches 引用了不存在的填空位: ' + ref);
+        Object.keys(map).forEach(function (ans) {
+            const v = map[ans];
+            if (!v) return;
+            if (!branchValid.has(ans) && !branchNameToId[ans]) {
+                warnings.push('[' + id + '] slotBranches 分支「' + ans + '」不是已知线索/物品/人物/组合结果');
+            }
+        });
     });
 
     (sc.rewards || []).forEach(r => {
@@ -83,7 +122,11 @@ for (const id of ids) {
     const noteRe = /data-note="([^"]+)"/g;
     while ((m = noteRe.exec(story))) if (!DATA.notes[m[1]]) errors.push('[' + id + '] data-note 不存在: ' + m[1]);
     const expectRe = /data-expect="([^"]+)"/g;
-    while ((m = expectRe.exec(story))) if (!blockIds.has(m[1])) errors.push('[' + id + '] data-expect 块不存在: ' + m[1]);
+    while ((m = expectRe.exec(story))) {
+        const exp = m[1];
+        const valid = blockIds.has(exp) || allClueIds.has(exp) || characterIds.has(exp) || comboBlockNames.has(exp);
+        if (!valid) errors.push('[' + id + '] data-expect 块不存在: ' + exp);
+    }
 }
 
 for (const key of Object.keys(STORY.combinations || {})) {

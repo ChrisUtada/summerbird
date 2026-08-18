@@ -123,13 +123,34 @@
     #preview .narr-line { color: #b9ab94; margin-bottom: 8px; }
     #preview .divider { border: none; border-top: 1px solid #3a332b; margin: 12px 0; }
     #preview .msg { margin-bottom: 8px; }
-    #preview .msg .speaker { font-weight: bold; margin-right: 6px; }
+    #preview .msg .speaker { font-weight: normal; margin-right: 6px; color: #e8b84a; }
+    #preview .msg .speaker.wu { color: #e8b84a; }
+    #preview .msg .speaker.shan { color: #7fc4b8; }
+    #preview .msg .speaker.old { color: #d8a878; }
+    #preview .msg .speaker.zhang { color: #e0a060; }
     #preview .clue-highlight { color: #e8b84a; font-weight: bold; padding: 0 3px; }
     #preview .note-highlight { color: #8fd0c0; font-weight: bold; padding: 0 3px; }
     #preview .char-highlight { color: #d8a8f0; font-weight: bold; padding: 0 3px; }
     #preview .slot { display: inline-block; min-width: 100px; min-height: 28px; border-bottom: 3px dashed #5a7050; margin: 0 4px; padding: 0 6px; color: #93a980; font-size: 14px; vertical-align: bottom; background: rgba(30, 44, 30, 0.35); border-radius: 0 0 4px 4px; text-align: center; }
     #preview .slot .placeholder { color: #6d8058; font-size: 12px; }
     #preview .empty-tip { color: #6d6048; font-size: 13px; padding: 20px 0; text-align: center; }
+    #preview .slot.slot-pickup { border-bottom-color: #c9a24a; color: #e0c074; background: rgba(60, 48, 24, 0.4); }
+    #preview .slot.slot-pickup .placeholder { color: #b08a3a; }
+    /* 填空分支页 */
+    #branchList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .branch-slot { background: #1d1813; border: 1px solid #3a332b; border-radius: 8px; padding: 10px 12px; }
+    .bs-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bs-ref { color: #e8b84a; font-weight: bold; font-family: 'Consolas', monospace; }
+    .bs-tag.pickup { font-size: 11px; color: #8fd0c0; border: 1px solid #3a5a52; border-radius: 10px; padding: 1px 8px; }
+    .bs-label { font-size: 12px; color: #a8977d; margin-right: 8px; }
+    .bs-correct { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bs-correct-input { background: #12100e; width: 220px; }
+    .bs-wrong-title { font-size: 12px; color: #8a7b64; margin: 6px 0 4px; }
+    .bs-wrong-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; }
+    .bs-wrong-ans { background: #12100e; width: 150px; flex-shrink: 0; }
+    .bs-wrong-line { background: #12100e; flex: 1; resize: vertical; min-height: 40px; font-family: inherit; color: #e6dccb; border: 1px solid #4a4034; border-radius: 6px; padding: 4px 8px; }
+    .bs-wrong-add { margin-top: 2px; }
+    .bs-wrong-del { flex-shrink: 0; padding: 4px 10px; }
     /* 组合页 */
     #comboList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
     /* 组合行 */
@@ -227,6 +248,7 @@
     <button class="active" data-page="scene">剧本</button>
     <button data-page="combo">线索组合</button>
     <button data-page="entry">词条</button>
+    <button data-page="branch">填空分支</button>
 </div>
 <div id="main">
     <!-- 剧本页 -->
@@ -272,6 +294,11 @@
         </div>
         <div id="entryList"></div>
     </div>
+    <!-- 填空分支页 -->
+    <div class="page" id="page-branch">
+        <div class="hint-line">为每个 <code>{填:名字}</code> 填空位设定「正确填法」与「错误分支」：错误分支指玩家填入其它卡片时，剧情框追加的一段反应文字并阻塞，需点 <b style="color:#e8b84a">↺</b> 回到填空之前重填。物品/人物类填空（拾取型）：点击空位会弹出选择框（即使未配分支也会列出正确项，需手动选择才填入），也可把对应的物品/人物卡直接拖入空位；配了错误分支时，不同选择引向不同剧情。</div>
+        <div id="branchList"></div>
+    </div>
 </div>
 <input type="file" id="fileInput" accept=".js,.json" hidden />
 <script src="compiler.js"></script>
@@ -294,7 +321,7 @@
     function defaultED() {
         return {
             startScene: 'scene_1',
-            scenes: [{ id: 'scene_1', owner: 'wu', bg: 'cloudy', story: '# 第一章', goto: null, nextHint: '' }],
+            scenes: [{ id: 'scene_1', owner: 'wu', bg: 'cloudy', story: '# 第一章', goto: null, nextHint: '', slotBranches: {} }],
             combos: [],
             entries: []
         };
@@ -383,6 +410,7 @@
         if (!ED.scenes.find(s => s.id === id)) id = ED.scenes[0] ? ED.scenes[0].id : null;
         currentSceneId = id;
         renderSceneSel();
+        renderBranch();
     }
     $('sceneSel').addEventListener('change', function () { selectScene(this.value); });
     function moveScene(dir) {
@@ -416,7 +444,7 @@
         if (!input || !input.trim()) return;
         const sid = input.trim();
         if (ED.scenes.find(s => s.id === sid)) { alert('id 已存在'); return; }
-        ED.scenes.push({ id: sid, owner: 'wu', bg: 'cloudy', story: '# 新章节', goto: null, nextHint: '' });
+        ED.scenes.push({ id: sid, owner: 'wu', bg: 'cloudy', story: '# 新章节', goto: null, nextHint: '', slotBranches: {} });
         markDirty();
         selectScene(sid);
     });
@@ -474,7 +502,7 @@
         const ids = entryIds();
         const compiled = SBCompiler.compileScenes([sc], {
             speakers: { wu: '吴秋崖', shan: '商难', old: '张道诚', zhang: '张泽平' },
-            ids: { char: ids.characters, clue: Object.assign({}, ids.clues, ids.items), note: ids.notes }
+            ids: { char: ids.characters, clue: Object.assign({}, ids.clues, ids.items), item: ids.items, note: ids.notes }
         });
         const cs = compiled.scenes[sc.id];
         pre.innerHTML = cs ? cs.story.split('\n').map(s => s.trim()).filter(Boolean).join('') :
@@ -767,8 +795,122 @@
             $('page-' + this.dataset.page).classList.add('active');
             if (this.dataset.page === 'entry') refreshEntries();
             if (this.dataset.page === 'combo') renderComboRows();
+            if (this.dataset.page === 'branch') renderBranch();
         });
     });
+
+    // ---------- 填空分支（slotBranches） ----------
+    // ED 内部用结构化形式：slotBranches[ref] = { correct: '正确卡名', wrong: [{answer, line}] }
+    // 导出时转换为运行时形式：slotBranches[ref] = { '正确卡名': {correct:true}, '错误卡名': {wrong:true, line} }
+    function fillRefsOf(text) {
+        const re = /\{填:([^}]+)\}/g;
+        const seen = [];
+        let m;
+        while ((m = re.exec(text || ''))) {
+            const n = m[1].trim();
+            if (seen.indexOf(n) === -1) seen.push(n);
+        }
+        return seen;
+    }
+    function isPickupRef(name) {
+        return ED.entries.some(function (e) { return (e.type === 'item' || e.type === 'char') && e.name === name; });
+    }
+    function renderBranch() {
+        const sc = getScene();
+        const page = $('branchList');
+        if (!sc) { page.innerHTML = '<div class="hint-line">暂无场景</div>'; return; }
+        if (!sc.slotBranches) sc.slotBranches = {};
+        const refs = fillRefsOf(sc.story);
+        if (refs.length === 0) { page.innerHTML = '<div class="hint-line">本场景没有填空位（{填:名字}）。</div>'; return; }
+        page.innerHTML = '';
+        refs.forEach(function (name) {
+            const cfg = sc.slotBranches[name] || { correct: name, wrong: [] };
+            const isPickup = isPickupRef(name);
+            const block = document.createElement('div');
+            block.className = 'branch-slot';
+            const wrongRows = (cfg.wrong || []).map(function (w, i) {
+                return '<div class="bs-wrong-row" data-i="' + i + '">' +
+                    '<input class="bs-wrong-ans" value="' + escapeHtml(w.answer || '') + '" placeholder="物品/人物名（如 匕首）" />' +
+                    '<textarea class="bs-wrong-line" placeholder="分支反应文本：填入该物品/人物时追加到剧情框并阻塞等待 ↺">' + escapeHtml(w.line || '') + '</textarea>' +
+                    '<button class="bs-wrong-del danger">删</button></div>';
+            }).join('');
+            const tagHtml = isPickup ? '<span class="bs-tag pickup">拾取（点击/拖入均可，需选择填入）</span>' : '';
+            block.innerHTML =
+                '<div class="bs-head"><span class="bs-ref">{填:' + escapeHtml(name) + '}</span>' + tagHtml + '</div>' +
+                '<div class="bs-correct"><span class="bs-label">正确填法</span>' +
+                '<input class="bs-correct-input" value="' + escapeHtml(cfg.correct || name) + '" placeholder="正确物品/人物名" /></div>' +
+                '<div class="bs-wrong-title">错误分支（填入其它' + (isPickup ? '物品/人物' : '卡片') + '时触发的剧情）</div>' +
+                '<div class="bs-wrong-list">' + wrongRows + '</div>' +
+                '<button class="bs-wrong-add">＋ 添加错误分支</button>';
+            page.appendChild(block);
+            block.querySelector('.bs-correct-input').addEventListener('input', function () {
+                sc.slotBranches[name] = sc.slotBranches[name] || { correct: name, wrong: [] };
+                sc.slotBranches[name].correct = this.value.trim() || name;
+                markDirty();
+            });
+            block.querySelectorAll('.bs-wrong-row').forEach(function (row) {
+                const i = parseInt(row.dataset.i, 10);
+                row.querySelector('.bs-wrong-ans').addEventListener('input', function () {
+                    ensureBranchWrong(sc, name, i);
+                    sc.slotBranches[name].wrong[i].answer = this.value;
+                    markDirty();
+                });
+                row.querySelector('.bs-wrong-line').addEventListener('input', function () {
+                    ensureBranchWrong(sc, name, i);
+                    sc.slotBranches[name].wrong[i].line = this.value;
+                    markDirty();
+                });
+                row.querySelector('.bs-wrong-del').addEventListener('click', function () {
+                    const arr = (sc.slotBranches[name] && sc.slotBranches[name].wrong) || [];
+                    arr.splice(i, 1);
+                    renderBranch();
+                    markDirty();
+                });
+            });
+            block.querySelector('.bs-wrong-add').addEventListener('click', function () {
+                sc.slotBranches[name] = sc.slotBranches[name] || { correct: name, wrong: [] };
+                sc.slotBranches[name].wrong = sc.slotBranches[name].wrong || [];
+                sc.slotBranches[name].wrong.push({ answer: '', line: '' });
+                renderBranch();
+                markDirty();
+            });
+        });
+    }
+    function ensureBranchWrong(sc, name, i) {
+        sc.slotBranches[name] = sc.slotBranches[name] || { correct: name, wrong: [] };
+        sc.slotBranches[name].wrong = sc.slotBranches[name].wrong || [];
+        while (sc.slotBranches[name].wrong.length <= i) sc.slotBranches[name].wrong.push({ answer: '', line: '' });
+    }
+    function buildSlotBranches(sc) {
+        const out = {};
+        Object.keys(sc.slotBranches || {}).forEach(function (ref) {
+            const cfg = sc.slotBranches[ref];
+            if (!cfg) return;
+            const wrong = (cfg.wrong || []).filter(function (w) { return w.answer && w.answer.trim(); });
+            if (wrong.length === 0) return; // 仅正确填法时无需记录，运行时默认按期望块处理
+            const map = {};
+            map[cfg.correct || ref] = { correct: true };
+            wrong.forEach(function (w) { map[w.answer.trim()] = { wrong: true, line: w.line || '' }; });
+            out[ref] = map;
+        });
+        return out;
+    }
+    function parseSlotBranches(runtimeMap) {
+        const out = {};
+        Object.keys(runtimeMap || {}).forEach(function (ref) {
+            const map = runtimeMap[ref];
+            let correct = ref;
+            const wrong = [];
+            Object.keys(map || {}).forEach(function (ans) {
+                const v = map[ans];
+                if (!v) return;
+                if (v.correct) correct = ans;
+                else if (v.wrong) wrong.push({ answer: ans, line: v.line || '' });
+            });
+            out[ref] = { correct: correct, wrong: wrong };
+        });
+        return out;
+    }
 
     // ---------- 校验 ----------
     function validate() {
@@ -788,7 +930,7 @@
             while ((m = slotRe.exec(sc.story || ''))) {
                 const name = m[1].trim();
                 const hasCard = ED.combos.some(c => c.block === name) ||
-                    names['char@' + name] || names['item@' + name] || names['clue@' + name];
+                    names['char@' + name] || names['item@' + name] || names['clue@' + name] || names['block@' + name];
                 if (!hasCard) warnings.push('[' + sc.id + '] 填空「' + name + '」没有任何卡片可产出（需组合产出或人物/物品/线索卡）');
             }
             const charRe = /\{人:([^}]+)\}/g;
@@ -854,25 +996,18 @@
             combinations[key] = entry;
         });
         const scenes = ED.scenes.map(function (sc) {
-            const slotRe = /\{填:([^}]+)\}/g;
-            const refs = [];
-            let m;
-            while ((m = slotRe.exec(sc.story || ''))) {
-                if (refs.indexOf(m[1].trim()) === -1) refs.push(m[1].trim());
-            }
-            const initBlocks = refs.map(function (name) {
-                const be = ED.entries.find(x => x.type === 'block' && x.name === name);
-                return { id: name, type: 'reason', label: name, detail: be ? be.desc : '', owner: 'all' };
-            });
-            return {
+            const slotBranches = buildSlotBranches(sc);
+            const sceneOut = {
                 id: sc.id,
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
                 story: sc.story || '',
-                initBlocks: initBlocks,
+                initBlocks: [],
                 goto: sc.goto || null,
                 nextHint: sc.nextHint || ''
             };
+            if (Object.keys(slotBranches).length) sceneOut.slotBranches = slotBranches;
+            return sceneOut;
         });
         return {
             startScene: ED.scenes[0] ? ED.scenes[0].id : '', // 列表第一个场景即起始场景
@@ -920,7 +1055,8 @@
                 bg: sc.bg || 'cloudy',
                 story: convertStoryText(sc.story || '', data, sc.initBlocks),
                 goto: sc.goto || null,
-                nextHint: sc.nextHint || ''
+                nextHint: sc.nextHint || '',
+                slotBranches: parseSlotBranches(sc.slotBranches)
             });
         });
     }
