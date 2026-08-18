@@ -92,9 +92,15 @@
             // 宽容处理：块未定义时仍生成填空位（id=ref），由编辑器自动补齐 initBlocks
             const block = resolveBlock(ref.trim(), blocks) || { id: ref.trim(), label: ref.trim() };
             const slotId = nextSlotId();
-            slotConfigs.push({ id: slotId, expected: block.id, label: block.label });
-            return '<span class="slot" data-slot="' + slotId + '" data-expect="' + block.id +
-                '" data-answer="' + block.label + '"><span class="placeholder">______</span></span>';
+            const safeRef = ref.trim().replace(/"/g, '&quot;');
+            // 物品/人物类填空视为「拾取」：点击空位直接收集，不依赖预先拥有的卡
+            const pickupType = (ctx.ids.item && ctx.ids.item[ref.trim()]) ? 'item' :
+                ((ctx.ids.char && ctx.ids.char[ref.trim()]) ? 'char' : '');
+            slotConfigs.push({ id: slotId, ref: ref.trim(), expected: block.id, label: block.label, pickup: pickupType });
+            return '<span class="slot' + (pickupType ? ' slot-pickup' : '') + '" data-slot="' + slotId + '" data-ref="' + safeRef +
+                '" data-expect="' + block.id + '" data-answer="' + block.label + '"' +
+                (pickupType ? ' data-pickup="' + pickupType + '"' : '') +
+                '><span class="placeholder">______</span></span>';
         });
         return text;
     }
