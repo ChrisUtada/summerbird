@@ -1618,7 +1618,7 @@
                 <span class="fill-title">选择卡片填入空缺</span>
                 <button class="fill-close" id="fillClose">×</button>
             </div>
-            <div class="fill-hint">点击下方卡片填入空缺；人物卡可反复使用</div>
+            <div class="fill-hint">点击下方卡片填入空缺；不同选择可能引向不同剧情</div>
             <div class="fill-list" id="fillList"></div>
         </div>
     </div>
@@ -1630,7 +1630,7 @@
                 <span class="fill-title">选择填入内容</span>
                 <button class="fill-close" id="pickupChoiceClose">×</button>
             </div>
-            <div class="fill-hint">这个空位可填多种物品/人物，不同选择会引向不同剧情</div>
+            <div class="fill-hint">点击下方卡片填入空缺；不同选择可能引向不同剧情</div>
             <div class="fill-list" id="pickupChoiceList"></div>
         </div>
     </div>
@@ -1664,7 +1664,8 @@
             items: [], // 收集的物品 { id, owner }
             notes: [], // 已解锁的笔记 { id, owner }
             characters: [],
-            usedBlockIds: new Set(), // 填空完成追踪：仅记录已填空位的 expect id
+            usedBlockIds: new Set(), // 填空完成追踪：仅记录当前场景已填空位的 expect id
+            filledSlots: {}, // 按场景保存的填空记录：sceneId -> [已填 expect id]，用于场景切换时隔离
             placedIds: new Set(), // 当前正放置在空位里的卡片 id：填入即隐藏、回退即恢复（线索/推理/物品/人物均适用，可反复使用）
             consumedIds: new Set(), // 消费追踪：仅「组合后删除」(removeAfterCombine) 的线索进入，用于从列表隐藏
             allBlocks: [], // 所有可拖动块
@@ -2031,6 +2032,14 @@
                 return;
             }
             currentSceneOwner = scene.owner || 'wu';
+
+            // 场景切换：先把当前场景的填空记录存档，再载入目标场景自己的记录（防止跨场景串填）
+            if (storySceneId && storySceneId !== state.scene) {
+                state.filledSlots[storySceneId] = Array.from(state.usedBlockIds);
+            }
+            if (storySceneId !== state.scene) {
+                state.usedBlockIds = new Set(state.filledSlots[state.scene] || []);
+            }
 
             // 注意：可组合的推理卡默认不预置，需由「组合推理」产出；无组合来源的卡仍由 initBlocks 预置
             state.slotConfigs = scene.slotConfigs || [];
@@ -2640,6 +2649,12 @@
         function fillSlot(slot, blockId) {
             const block = state.allBlocks.find(b => b.id === blockId);
             if (!block) return false;
+            // 类型规则：线索空位只接受线索/推理结果，物品空位只接受物品，人物空位只接受人物
+            const slotType = slot.dataset.pickup || 'clue';
+            const typeOk = slotType === 'item' ? block.type === 'item'
+                : slotType === 'char' ? block.type === 'char'
+                : (block.type === 'clue' || block.type === 'reason');
+            if (!typeOk) return false;
             const scene = SCENES[state.scene];
             const ref = slot.dataset.ref;
             const branchMap = (scene && scene.slotBranches && ref) ? scene.slotBranches[ref] : null;
@@ -2767,25 +2782,35 @@
             renderClues(); renderItems(); renderCharacters(); updateCounts(); refreshDraggable();
         }
 
-        // 拾取型填空：点击空位收集该物品/人物
-        // 若该空位在场景 slotBranches 中配置了多个选项（正确物品 + 错误分支物品/人物），
-        // 则先弹出选择框，让玩家选填哪个；不同选择引向不同剧情分支。
+        // 拾取型填空：点击空位收集该物品/人物，弹统一选择框供玩家选填
         function fillPickupSlot(slot) {
             const ref = slot.dataset.expect;
             const kind = slot.dataset.pickup; // 'item' | 'char'
             const scene = SCENES[state.scene];
             const branchMap = (scene && scene.slotBranches && ref) ? scene.slotBranches[ref] : null;
-            let keys, map;
-            if (branchMap) {
-                keys = Object.keys(branchMap);
-                map = branchMap;
-            } else {
-                // 未配置分支：仍弹选择框，列出正确项，绝不直接填入
-                keys = [ref];
-                map = {};
-                map[ref] = { correct: true };
-            }
-            openPickupChoice(slot, keys, map, kind);
+            // 统一规则：空位类型决定可填卡片——物品空位只列物品、人物空位只列人物
+            // 分支表配置但尚未获得的同类型选项（正确项/错误分支项）也会补进列表
+            const blocks = [];
+            const has = function (b) {
+                return blocks.some(x => (x.sourceId || x.id) === (b.sourceId || b.id) || x.label === b.label);
+            };
+            fillCandidates(kind).forEach(b => { if (!has(b)) blocks.push(b); });
+            const addEntry = function (key) {
+                const id = resolvePickupRef('item', key) || resolvePickupRef('char', key);
+                if (!id) return;
+                const isItem = !!DATA.items[id];
+                if ((kind === 'item') !== isItem) return; // 分支项类型须与空位类型一致
+                const nb = {
+                    id: (isItem ? 'item_' : 'char_') + id,
+                    type: isItem ? 'item' : 'char',
+                    label: isItem ? DATA.items[id].name : DATA.characters[id].name,
+                    sourceId: id
+                };
+                if (!has(nb)) blocks.push(nb);
+            };
+            if (branchMap) Object.keys(branchMap).forEach(addEntry);
+            if (!has({ label: ref })) addEntry(ref);
+            openPickupChoice(slot, blocks, branchMap);
         }
 
         // 把 key（物品/人物 id 或 name）解析为实际 id
@@ -2799,29 +2824,48 @@
             return null;
         }
 
-        // 弹出选择框（多个选项时）
-        function openPickupChoice(slot, keys, branchMap, kind) {
+        // 统一候选：按空位类型过滤可填卡片——线索空位只填线索/推理结果，物品空位只填物品，人物空位只填人物
+        function fillCandidates(slotType) {
+            const typeOk = slotType === 'item' ? function (b) { return b.type === 'item'; }
+                : slotType === 'char' ? function (b) { return b.type === 'char'; }
+                : function (b) { return b.type === 'clue' || b.type === 'reason'; };
+            return state.allBlocks.filter(b =>
+                typeOk(b) && !state.consumedIds.has(b.id) && !state.placedIds.has(b.id));
+        }
+
+        // 弹出统一选择框（候选：线索/推理/物品/人物；拾取型按分支表判定正确/错误/退回）
+        function openPickupChoice(slot, blocks, branchMap) {
+            const ref = slot.dataset.expect;
+            const kind = slot.dataset.pickup; // 'item' | 'char'
             pickupChoiceList.innerHTML = '';
-            keys.forEach(function (key) {
-                const entry = branchMap[key] || { correct: true };
-                const id = resolvePickupRef(kind, key);
-                if (!id) return; // 无法解析的选项错误跳过
-                const nm = (kind === 'item' ? (DATA.items[id] && DATA.items[id].name) : (DATA.characters[id] && DATA.characters[id].name)) || key;
+            blocks.forEach(function (block) {
+                const key = block.sourceId || block.id;
+                const entry = (branchMap && (branchMap[key] || branchMap[block.label])) ||
+                    (key === ref || block.label === ref ? { correct: true } : null);
                 const item = document.createElement('div');
-                item.className = 'fill-item' + (entry.correct ? '' : ' alt-item');
-                item.innerHTML = nm + '<span class="block-type">' + BLOCK_TYPE_NAME[kind] + '</span>';
+                item.className = 'fill-item' + (entry && entry.correct ? '' : ' alt-item');
+                item.innerHTML = block.label + '<span class="block-type">' + BLOCK_TYPE_NAME[block.type] + '</span>';
                 item.addEventListener('click', function () {
                     closePickupChoice();
-                    doPickupFill(slot, id, kind, entry);
+                    if (!entry) {
+                        // 不在分支配置里的卡片：与普通填空一致，拒绝填入，不收集、不阻塞
+                        rejectPickup(slot, '这个不适用于此处');
+                        return;
+                    }
+                    if (block.type !== 'item' && block.type !== 'char') {
+                        rejectPickup(slot, '这里要填' + (kind === 'item' ? '物品' : '人物') + '，不是这个');
+                        return;
+                    }
+                    doPickupFill(slot, block.sourceId, block.type, entry);
                     if (!slot.classList.contains('branch-wrong')) {
-                        showToast('✓ 填入「' + nm + '」成功！', 'success');
+                        showToast('✓ 填入「' + block.label + '」成功！', 'success');
                     }
                 });
                 pickupChoiceList.appendChild(item);
             });
             if (pickupChoiceList.children.length === 0) {
                 // 没有可解析的选项，回退为直接收集期望
-                doPickupFill(slot, slot.dataset.expect, kind, branchMap[slot.dataset.expect] || null);
+                doPickupFill(slot, ref, kind, (branchMap && branchMap[ref]) || { correct: true });
                 return;
             }
             pickupChoiceModal.classList.add('open');
@@ -2945,9 +2989,8 @@
         const BLOCK_TYPE_NAME = { clue: '线索', reason: '推理', item: '物品', char: '人物', note: '笔记' };
 
         function openFillModal(slotEl) {
-            // 已「填空后删除」(removeAfterFill) 消耗的卡片不再作为候选；普通卡可反复选择
-            const candidates = state.allBlocks.filter(b => !state.consumedIds.has(b.id) && !state.placedIds.has(b.id))
-                .filter(b => b.type === 'clue' || b.type === 'reason' || b.type === 'item' || b.type === 'char');
+            // 统一规则：线索/推理类空位只列出线索与推理结果卡片（已消费或正放置在空位中的不列出）
+            const candidates = fillCandidates('clue');
             if (candidates.length === 0) {
                 fillList.innerHTML = '<div class="empty">没有可用的卡片，请先点击剧情中的高亮词收集，或通过组合推理获得</div>';
             } else {
@@ -3040,6 +3083,7 @@
                 notes: state.notes,
                 characters: state.characters,
                 usedBlockIds: Array.from(state.usedBlockIds),
+                filledSlots: state.filledSlots,
                 placedIds: Array.from(state.placedIds),
                 consumedIds: Array.from(state.consumedIds),
                 allBlocks: state.allBlocks,
@@ -3082,6 +3126,7 @@
             state.notes = Array.isArray(save.notes) ? save.notes : [];
             state.characters = Array.isArray(save.characters) ? save.characters : [];
             state.usedBlockIds = new Set(Array.isArray(save.usedBlockIds) ? save.usedBlockIds : []);
+            state.filledSlots = (save.filledSlots && typeof save.filledSlots === 'object') ? save.filledSlots : {};
             state.placedIds = new Set(Array.isArray(save.placedIds) ? save.placedIds : []);
             state.consumedIds = new Set(Array.isArray(save.consumedIds) ? save.consumedIds : []);
             state.allBlocks = Array.isArray(save.allBlocks) ? save.allBlocks : [];

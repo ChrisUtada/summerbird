@@ -86,6 +86,7 @@ for (const id of ids) {
     });
 
     // 填空分支校验：分支键应为已知线索/物品/人物或组合结果（id 或 name）
+    // 类型规则：线索空位只填线索/推理结果，物品空位只填物品，人物空位只填人物
     const sceneSlotRefs = new Set((sc.slotConfigs || []).map(c => c.ref));
     const comboNames = new Set();
     for (const key of Object.keys(STORY.combinations || {})) {
@@ -93,15 +94,36 @@ for (const id of ids) {
         if (blk) { if (blk.id) comboNames.add(blk.id); if (blk.label) comboNames.add(blk.label); }
     }
     const branchValid = new Set([...branchRefSet, ...comboNames]);
+    const slotTypeOf = function (ref) {
+        const id = branchNameToId[ref] || ref;
+        if (DATA.items[id]) return 'item';
+        if (DATA.characters[id]) return 'char';
+        return 'clue';
+    };
+    const answerTypeOf = function (ans) {
+        const id = branchNameToId[ans] || ans;
+        if (DATA.items[id]) return 'item';
+        if (DATA.characters[id]) return 'char';
+        return 'clue'; // 线索与组合结果（推理）均视为线索类
+    };
     Object.keys(sc.slotBranches || {}).forEach(function (ref) {
         const map = sc.slotBranches[ref];
         if (!map) return;
         if (!sceneSlotRefs.has(ref)) warnings.push('[' + id + '] slotBranches 引用了不存在的填空位: ' + ref);
+        const st = slotTypeOf(ref);
         Object.keys(map).forEach(function (ans) {
             const v = map[ans];
             if (!v) return;
             if (!branchValid.has(ans) && !branchNameToId[ans]) {
                 warnings.push('[' + id + '] slotBranches 分支「' + ans + '」不是已知线索/物品/人物/组合结果');
+                return;
+            }
+            const at = answerTypeOf(ans);
+            const ok = st === 'clue' ? at === 'clue' : at === st;
+            if (!ok) {
+                warnings.push('[' + id + '] slotBranches 分支「' + ans + '」是' +
+                    (at === 'item' ? '物品' : at === 'char' ? '人物' : '线索') + '，与填空「' + ref + '」的' +
+                    (st === 'item' ? '物品' : st === 'char' ? '人物' : '线索') + '类型不符，该分支不会出现');
             }
         });
     });
