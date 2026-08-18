@@ -2668,8 +2668,13 @@
             slot.classList.add('filled');
             // 完成追踪：记录该空位的 expect
             state.usedBlockIds.add(slot.dataset.expect);
-            // 该卡正放置在空位中：从栏位隐藏（回退即恢复，可反复使用）
-            state.placedIds.add(block.id);
+            // 填入后处理：勾选「填空后删除」的卡片永久移除；否则临时隐藏（回退即恢复，可反复使用）
+            const bd = blockData(block);
+            if (bd && bd.removeAfterFill) {
+                state.consumedIds.add(block.id);
+            } else {
+                state.placedIds.add(block.id);
+            }
             // 从组合选中移除（已使用的块不再可选）
             const selIdx = state.selectedClueIds.indexOf(blockId);
             if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
@@ -2742,8 +2747,7 @@
             // 移除分支反应行
             const br = storyEl.querySelector('.branch-line[data-branchfor="' + slotId + '"]');
             if (br) br.remove();
-            // 回到填空之前：仅清空空位，绝不删除任何卡片（线索/物品/人物后续仍可能用到）
-            // 该卡从「正放置」集合移除 → 立即在栏位恢复显示，可重新拖入
+            // 回到填空之前：仅清空空位；「填空后删除」的卡片仍保持移除，其余从「正放置」集合移除并立即恢复显示，可重新拖入
             if (filledBlock) {
                 state.usedBlockIds.delete(filledBlock);
                 state.usedBlockIds.delete(slot.dataset.expect); // 拾取型以期望 id 记录，需一并清除
@@ -2855,6 +2859,15 @@
             else {
                 slot.classList.add('branch-wrong');
                 slot.classList.remove('correct-flash');
+            }
+            // 填入后处理：勾选「填空后删除」的卡片永久移除；否则临时隐藏（回退即恢复，可反复使用）
+            const fbId = (kind === 'item' ? 'item_' : 'char_') + chosenRef;
+            const fbBlock = state.allBlocks.find(b => b.id === fbId);
+            const fbData = blockData(fbBlock);
+            if (fbData && fbData.removeAfterFill) {
+                state.consumedIds.add(fbId);
+            } else {
+                state.placedIds.add(fbId);
             }
             const selIdx = state.selectedClueIds.indexOf(chosenRef);
             if (selIdx > -1) state.selectedClueIds.splice(selIdx, 1);
