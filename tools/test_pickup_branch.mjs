@@ -103,17 +103,23 @@ step('点击空位弹出分支选择框（2 个选项）', () => {
     assert(opts.length === 2, '应有 2 个选项，实际=' + opts.length);
 });
 
-step('选择错误分支（匕首）：标记 branch-wrong + 追加分支文字 + 收集匕首', () => {
+step('选择错误分支（匕首）：标记 branch-wrong + 收集匕首', () => {
     const opts = [...document.querySelectorAll('#pickupChoiceList .fill-item')];
     const wrong = opts.find(o => o.textContent.includes('匕首'));
     assert(wrong, '找不到匕首选项');
     wrong.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     assert(slot.classList.contains('branch-wrong'), '错误分支未标记 branch-wrong');
     assert(slot.classList.contains('filled'), '空位未标记 filled');
-    const line = document.querySelector('#storyArea .branch-line');
-    assert(line && line.textContent.includes('匕首'), '未追加错误分支文字');
     assert(document.getElementById('itemList').innerHTML.includes('匕首'), '匕首未进入物品栏');
     assert(!document.getElementById('pickupChoiceModal').classList.contains('open'), '选择框未关闭');
+});
+
+// 分支行是逐字打字的，等打字完成后（约 18 字 × 28ms）再断言文本
+await new Promise(r => setTimeout(r, 800));
+step('错误分支文字已逐字打出', () => {
+    const line = document.querySelector('#storyArea .branch-line');
+    assert(line, '未追加错误分支行');
+    assert(line.textContent.includes('匕首'), '错误分支文字未包含「匕首」：' + JSON.stringify(line.textContent));
 });
 
 step('点 ↺ 回到填空之前：清空空位与分支文字', () => {
