@@ -3610,28 +3610,28 @@
         const bgm = document.getElementById('bgm');
         const btnMusic = document.getElementById('btnMusic');
         let bgmPlaying = false;
-        // 从封面页继承音乐状态（sessionStorage 标记）
+        function setBgmUI(on) {
+            bgmPlaying = on;
+            sessionStorage.setItem('bgmOn', on ? '1' : '0');
+            btnMusic.classList.toggle('playing', on);
+            btnMusic.textContent = on ? '♫' : '♪';
+        }
+        // 从封面页继承音乐状态：首次交互时播放（浏览器禁止页面加载时自动播放）
         if (sessionStorage.getItem('bgmOn') === '1') {
-            bgm.play().then(function() {
-                bgmPlaying = true;
-                btnMusic.classList.add('playing');
-                btnMusic.textContent = '♫';
-            }).catch(function() {});
+            function startBgmOnInteraction() {
+                bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
+                document.removeEventListener('pointerdown', startBgmOnInteraction);
+                document.removeEventListener('click', startBgmOnInteraction);
+            }
+            document.addEventListener('pointerdown', startBgmOnInteraction);
+            document.addEventListener('click', startBgmOnInteraction);
         }
         btnMusic.addEventListener('click', function() {
             if (bgmPlaying) {
                 bgm.pause();
-                bgmPlaying = false;
-                sessionStorage.setItem('bgmOn', '0');
-                btnMusic.classList.remove('playing');
-                btnMusic.textContent = '♪';
+                setBgmUI(false);
             } else {
-                bgm.play().then(function() {
-                    bgmPlaying = true;
-                    sessionStorage.setItem('bgmOn', '1');
-                    btnMusic.classList.add('playing');
-                    btnMusic.textContent = '♫';
-                }).catch(function() {});
+                bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
             }
         });
     </script>
