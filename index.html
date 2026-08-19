@@ -454,6 +454,13 @@
             border-color: #d65a3c;
             background: #322a21;
         }
+        .hist-scene-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
         .hist-scene-title {
             letter-spacing: 1px;
         }
@@ -481,6 +488,24 @@
         }
         .hist-scene-body .hist-line:first-child {
             margin-top: 2px;
+        }
+        .hist-revisit {
+            background: #2a2420;
+            border: 1px solid #4a4034;
+            color: #f0c060;
+            border-radius: 8px;
+            padding: 3px 9px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            flex-shrink: 0;
+            line-height: 1.4;
+            transition: all 0.2s;
+        }
+        .hist-revisit:hover {
+            border-color: #f0c060;
+            background: #322a21;
+            color: #f7d98a;
         }
         /* 线索选择卡片（与推理结果卡片同款式，仅点击选择用） */
         .clue-item {
@@ -1118,6 +1143,104 @@
             flex-shrink: 0;
             text-align: center;
         }
+        /* 填空弹窗内的快速组合栏：选线索 → 组合 → 直接填入，减少往返抽屉 */
+        .fill-combo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-top: 1px solid #3a332b;
+            flex-shrink: 0;
+        }
+        .fill-combo-tip {
+            font-size: 12px;
+            color: #8a7b64;
+            flex: 1;
+            min-width: 0;
+        }
+        .fill-combo-tip b {
+            color: #e8b84a;
+        }
+        .fill-combo .btn-combine {
+            background: #d65a3c;
+            border: none;
+            color: #faf4ea;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .fill-combo .btn-combine:hover {
+            background: #e06a48;
+        }
+        .fill-combo .btn-combine:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .fill-combo .btn-clear {
+            background: #2a2420;
+            border: 1px solid #4a4034;
+            color: #b3a287;
+            padding: 7px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .fill-combo .btn-clear:hover {
+            border-color: #d65a3c;
+            color: #e8decc;
+        }
+        /* 填空弹窗里可勾选的线索卡 */
+        .fill-item.selectable {
+            cursor: pointer;
+        }
+        .fill-item.selectable:hover {
+            border-color: #d65a3c;
+        }
+        .fill-item.selected {
+            border-color: #e8b84a;
+            background: rgba(232, 184, 74, 0.10);
+            box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.4) inset;
+        }
+        .fill-item.selected::after {
+            content: '✓';
+            margin-left: auto;
+            color: #e8b84a;
+            font-size: 13px;
+        }
+        .fill-item .block-detail {
+            width: 100%;
+            font-size: 11px;
+            color: #8a7b64;
+            line-height: 1.5;
+        }
+        /* 组合完成后的新推理卡：闪烁提示，等玩家手动点选填入 */
+        .fill-item.flash-new {
+            animation: flashNew 1.4s ease;
+        }
+        @keyframes flashNew {
+            0% { box-shadow: 0 0 0 3px rgba(214, 90, 60, 0.9); background: rgba(214, 90, 60, 0.22); transform: scale(1.03); }
+            50% { box-shadow: 0 0 0 3px rgba(232, 184, 74, 0.8); background: rgba(232, 184, 74, 0.14); transform: scale(1.01); }
+            100% { box-shadow: none; transform: scale(1); }
+        }
+        /* 组合失败：选中卡红色边框 + 轻微震动（弹窗会盖住 toast，改用卡面反馈） */
+        .fill-item.combo-fail {
+            border-color: #e05a4e;
+            background: rgba(224, 90, 78, 0.12);
+            animation: shakeX 0.5s ease;
+        }
+        @keyframes shakeX {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
 
         /* ---------- 存档栏（回顾抽屉内，跨设备传输） ---------- */
         .save-bar {
@@ -1618,8 +1741,13 @@
                 <span class="fill-title">选择卡片填入空缺</span>
                 <button class="fill-close" id="fillClose">×</button>
             </div>
-            <div class="fill-hint">点击下方卡片填入空缺；不同选择可能引向不同剧情</div>
+            <div class="fill-hint">点击卡片直接填入空缺 · 长按线索可进入「组合模式」</div>
             <div class="fill-list" id="fillList"></div>
+            <div class="fill-combo" id="fillComboBar" style="display:none;">
+                <span class="fill-combo-tip" id="fillComboTip">已选 <b id="fillComboCount">0</b> 条线索，可组合推理</span>
+                <button class="btn-clear" id="fillComboClear">取消</button>
+                <button class="btn-combine" id="fillComboBtn" disabled>组合推理</button>
+            </div>
         </div>
     </div>
 
@@ -1714,6 +1842,11 @@
         const fillModal = document.getElementById('fillModal');
         const fillClose = document.getElementById('fillClose');
         const fillList = document.getElementById('fillList');
+        const fillComboBar = document.getElementById('fillComboBar');
+        const fillComboTip = document.getElementById('fillComboTip');
+        const fillComboCount = document.getElementById('fillComboCount');
+        const fillComboBtn = document.getElementById('fillComboBtn');
+        const fillComboClear = document.getElementById('fillComboClear');
         const pickupChoiceModal = document.getElementById('pickupChoiceModal');
         const pickupChoiceClose = document.getElementById('pickupChoiceClose');
         const pickupChoiceList = document.getElementById('pickupChoiceList');
@@ -1937,60 +2070,61 @@
         }
 
         // ---------- 组合推理（恢复「之前的版本」：选线索 → 产出推理结果卡） ----------
+        // 通用组合：抽屉与填空弹窗共用。返回 { ok:true, block } 或 { ok:false, reason:'exists'|'none' }
+        function tryCombine(selectedBlockIds) {
+            const clueIds = [];
+            selectedBlockIds.forEach(function (blockId) {
+                const block = state.allBlocks.find(b => b.id === blockId);
+                if (block && block.sourceType === 'clue') clueIds.push(block.sourceId);
+            });
+            if (clueIds.length < 2) return { ok: false, reason: 'none' };
+            const key = clueIds.slice().sort().join('+');
+            const combo = COMBINATIONS[key];
+            if (!combo) return { ok: false, reason: 'none' };
+            if (combo.block) {
+                if (state.allBlocks.find(b => b.id === combo.block.id)) return { ok: false, reason: 'exists' };
+                state.allBlocks.push({
+                    id: combo.block.id,
+                    type: 'reason',
+                    label: combo.block.label,
+                    detail: combo.block.detail || '',
+                    sourceId: key,
+                    sourceType: 'reason',
+                    owner: 'all'
+                });
+            } else if (state.combinedKeys.indexOf(key) > -1) {
+                return { ok: false, reason: 'exists' };
+            }
+            if (state.combinedKeys.indexOf(key) === -1) state.combinedKeys.push(key);
+            if (combo.noteId) addNote(combo.noteId, 'all');
+            // 组合后按线索配置决定是否从线索栏移除（消费，与填空消费相互独立）
+            clueIds.forEach(function (id) {
+                const cfg = DATA.clues[id];
+                if (cfg && cfg.removeAfterCombine) {
+                    const bid = 'clue_' + id;
+                    if (!state.consumedIds.has(bid)) state.consumedIds.add(bid);
+                    const sidx = state.selectedClueIds.indexOf(bid);
+                    if (sidx > -1) state.selectedClueIds.splice(sidx, 1);
+                }
+            });
+            const produced = combo.block ? state.allBlocks.find(b => b.id === combo.block.id) : null;
+            state.selectedClueIds = [];
+            return { ok: true, block: produced };
+        }
+
         function performCombine() {
             const selected = state.selectedClueIds;
             if (selected.length < 2) {
                 showToast('请至少选择两条线索', 'error');
                 return;
             }
-            const clueIds = [];
-            selected.forEach(function (blockId) {
-                const block = state.allBlocks.find(b => b.id === blockId);
-                if (block && block.sourceType === 'clue') clueIds.push(block.sourceId);
-            });
-            if (clueIds.length < 2) {
-                showToast('请选择有效的线索', 'error');
+            const r = tryCombine(selected);
+            if (!r.ok) {
+                showToast(r.reason === 'exists' ? '该推理已存在' : '这些线索无法组合，请尝试其他组合', 'error');
                 return;
             }
-            const key = clueIds.slice().sort().join('+');
-            const combo = COMBINATIONS[key];
-            if (combo) {
-                if (combo.block) {
-                    if (state.allBlocks.find(b => b.id === combo.block.id)) {
-                        showToast('该推理已存在', '');
-                        return;
-                    }
-                    state.allBlocks.push({
-                        id: combo.block.id,
-                        type: 'reason',
-                        label: combo.block.label,
-                        detail: combo.block.detail || '',
-                        sourceId: key,
-                        sourceType: 'reason',
-                        owner: 'all'
-                    });
-                } else if (state.combinedKeys.indexOf(key) > -1) {
-                    showToast('该推理已存在', '');
-                    return;
-                }
-                if (state.combinedKeys.indexOf(key) === -1) state.combinedKeys.push(key);
-                if (combo.noteId) addNote(combo.noteId, 'all');
-                // 组合后按线索配置决定是否从线索栏移除（消费，与填空消费相互独立）
-                clueIds.forEach(function (id) {
-                    const cfg = DATA.clues[id];
-                    if (cfg && cfg.removeAfterCombine) {
-                        const bid = 'clue_' + id;
-                        if (!state.consumedIds.has(bid)) state.consumedIds.add(bid);
-                        const sidx = state.selectedClueIds.indexOf(bid);
-                        if (sidx > -1) state.selectedClueIds.splice(sidx, 1);
-                    }
-                });
-                showToast('✓ 推理成功！新推理结果已生成', 'success');
-                state.selectedClueIds = [];
-                renderAll();
-            } else {
-                showToast('这些线索无法组合，请尝试其他组合', 'error');
-            }
+            showToast('✓ 推理成功！新推理结果已生成', 'success');
+            renderAll();
         }
 
         function toggleSelectClue(blockId) {
@@ -2020,9 +2154,12 @@
         let lineIndex = 0;
         let blocked = false; // 当前行有待填空，点击推进被阻塞
         let pendingScene = null; // 填空完成后待进入的下一场景（点击推进）
+        let revisitMode = false; // 回顾重游：整章完整显示，所有高亮可点，点击空白进入下一章
         let typingTimer = null;
         let typingNodes = [];
         let typingDoneCb = null;
+        let branchTypingTimer = null; // 分支反应行打字机
+        let branchTypingEl = null;
         const TYPE_MS = 28; // 打字机每字间隔
 
         function renderStory() {
@@ -2117,6 +2254,7 @@
             lineIndex = 0;
             blocked = false;
             stopTyping();
+            finishBranchTyping();
             // 初始静态提示行已由 JS 接管，恢复显示（由上层切换淡入）
             storyEl.style.opacity = '';
 
@@ -2306,9 +2444,15 @@
                 sec.className = 'hist-scene collapsed';
                 const head = document.createElement('div');
                 head.className = 'hist-scene-head';
-                head.innerHTML = `<span class="hist-scene-title">${record.title}</span><span class="hist-scene-arrow">▸</span>`;
+                head.innerHTML = `<span class="hist-scene-title">${record.title}</span><span class="hist-scene-actions"><button class="hist-revisit" title="回到此章，补齐遗漏的线索">回到此章</button><span class="hist-scene-arrow">▸</span></span>`;
                 head.addEventListener('click', function() {
                     sec.classList.toggle('collapsed');
+                });
+                // 「回到此章」：不触发展开/折叠
+                const revisitBtn = head.querySelector('.hist-revisit');
+                revisitBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    revisitScene(record.sceneId);
                 });
                 sec.appendChild(head);
                 const itemsWrap = document.createElement('div');
@@ -2399,6 +2543,11 @@
                 finishTyping();
                 return;
             }
+            if (branchTypingTimer) {
+                finishBranchTyping();
+                return;
+            }
+            if (revisitMode) return; // 重游模式：整章已完整显示，空白处无需再推进
             showNextLine();
         });
 
@@ -2559,6 +2708,11 @@
                 else if (r.type === 'item') addItem(r.id, owner);
             });
             recordFinishedScene(scene.id);
+            // 提示：本章还有未收集的线索，引导去回顾补齐，避免后续卡住
+            const uncollected = countUncollectedInScene(scene);
+            if (uncollected > 0) {
+                showToast('本章还有 ' + uncollected + ' 处线索未收集，可到「回顾」回到此章补齐', '');
+            }
             if (scene.goto) {
                 pendingScene = scene.goto;
                 storyHint.textContent = scene.nextHint || '▾ 点击继续';
@@ -2596,12 +2750,61 @@
         function loadScene(sceneId) {
             state.scene = sceneId;
             pendingScene = null;
+            revisitMode = false;
             const scene = SCENES[sceneId];
             if (scene) {
                 currentSceneOwner = scene.owner || 'wu';
                 ensureInitBlocks(scene);
             }
             renderAll();
+        }
+
+        // ---------- 回顾重游：回到一个已完成章节，整章完整显示以补齐遗漏的线索 ----------
+        function revisitScene(sceneId) {
+            closeDrawer();
+            const scene = SCENES[sceneId];
+            if (!scene) return;
+            // 先记录当前场景的填空，再载入目标场景自己的填空记录（与 renderStory 切换逻辑一致）
+            if (storySceneId && storySceneId !== sceneId) {
+                state.filledSlots[storySceneId] = Array.from(state.usedBlockIds);
+            }
+            state.scene = sceneId;
+            state.usedBlockIds = new Set(state.filledSlots[sceneId] || []);
+            currentSceneOwner = scene.owner || 'wu';
+            ensureInitBlocks(scene);
+            state.slotConfigs = scene.slotConfigs || [];
+            // 切换背景天气
+            document.body.className = 'bg-' + (scene.bg || 'cloudy');
+            if (scene.bg === 'rain') startRain();
+            else stopRain();
+            // 重游模式：整章完整显示，所有高亮可点
+            revisitMode = true;
+            buildStoryDom(scene);
+            storyEl.innerHTML = '';
+            storyDom.forEach(function(div, i) {
+                if (i === 0) div.classList.add('chapter-title');
+                storyEl.appendChild(div);
+            });
+            storyEl.appendChild(storyHint);
+            blocked = false;
+            pendingScene = scene.goto; // 已完成章节：收集线索后点击进入下一章
+            storyHint.textContent = scene.goto ? '▾ 点击空白处补齐线索，或进入下一章' : '▾ 点击空白处补齐遗漏的线索';
+            storyEl.style.opacity = '';
+            storyEl.scrollTop = 0;
+        }
+
+        // 统计一个场景中尚未收集的高亮线索处数（用于推进前提示）
+        function countUncollectedInScene(scene) {
+            if (!scene) return 0;
+            const re = /data-clue="([^"]+)"/g;
+            const story = String(scene.story || '');
+            let n = 0;
+            let m;
+            while ((m = re.exec(story)) !== null) {
+                const id = m[1];
+                if (!state.clues.find(c => c.id === id) && !state.items.find(i => i.id === id)) n++;
+            }
+            return n;
         }
 
         // ---------- 开始推理按钮（激活小剧场） ----------
@@ -2737,21 +2940,48 @@
             return true;
         }
 
-        // 在剧情框里追加一段分支反应行（用 branchfor 标记，便于撤销时移除）
+        // 在剧情框里追加一段分支反应行（用 branchfor 标记，便于撤销时移除），逐字打字显示
         function appendBranchLine(slot, text) {
             let lineEl = slot.parentNode;
             while (lineEl && lineEl.parentNode !== storyEl) lineEl = lineEl.parentNode;
             if (!lineEl) return;
+            // 上一段分支若还在打字，先完成（重复填入时以最新为准）
+            finishBranchTyping();
             const br = document.createElement('div');
             br.className = 'branch-line';
             br.dataset.branchfor = slot.dataset.slot;
-            br.textContent = text;
+            br.__fullText = text;
             if (lineEl.nextSibling) storyEl.insertBefore(br, lineEl.nextSibling);
             else storyEl.appendChild(br);
+            // 分支行同样逐字打字
+            branchTypingEl = br;
+            let i = 0;
+            branchTypingTimer = setInterval(function() {
+                i++;
+                br.textContent = text.slice(0, i);
+                if (i >= text.length) {
+                    clearInterval(branchTypingTimer);
+                    branchTypingTimer = null;
+                    branchTypingEl = null;
+                }
+            }, TYPE_MS);
+        }
+
+        // 立即完成当前分支行的打字（点击跳过 / 场景切换 / 撤销时调用）
+        function finishBranchTyping() {
+            if (branchTypingTimer) {
+                clearInterval(branchTypingTimer);
+                branchTypingTimer = null;
+            }
+            if (branchTypingEl) {
+                branchTypingEl.textContent = branchTypingEl.__fullText || branchTypingEl.textContent;
+            }
+            branchTypingEl = null;
         }
 
         // 回到填空之前：清空某空位的填入，恢复被消耗的卡片，可重新拖入
         function clearSlot(slot) {
+            finishBranchTyping();
             const filledBlock = slot.dataset.filledBlock;
             const slotId = slot.dataset.slot;
             slot.classList.remove('filled', 'correct-flash', 'wrong-flash', 'branch-wrong');
@@ -2987,39 +3217,163 @@
 
         // ---------- 填空选择器（触屏点击填充；桌面端点击槽位同样可用） ----------
         const BLOCK_TYPE_NAME = { clue: '线索', reason: '推理', item: '物品', char: '人物', note: '笔记' };
+        let fillSlotEl = null; // 当前打开填空弹窗所对应的空位
+        let fillSelectMode = false; // 填空弹窗内是否处于「组合模式」（长按线索进入，点选多条组合）
+
+        // 长按 = 组合模式；短按 = 直接填入（同时兼容鼠标与触屏，屏蔽触屏派生的鼠标事件）
+        function bindHoldTap(el, onLong, onTap) {
+            let timer = null;
+            let longFired = false;
+            const start = function (e) {
+                e.preventDefault();
+                longFired = false;
+                timer = setTimeout(function () {
+                    longFired = true;
+                    onLong();
+                }, 400);
+            };
+            const end = function (e) {
+                if (timer) { clearTimeout(timer); timer = null; }
+                if (!longFired) onTap();
+            };
+            const cancel = function () {
+                if (timer) { clearTimeout(timer); timer = null; }
+            };
+            el.addEventListener('mousedown', start);
+            el.addEventListener('mouseup', end);
+            el.addEventListener('mouseleave', cancel);
+            el.addEventListener('touchstart', start, { passive: false });
+            el.addEventListener('touchend', end, { passive: false });
+            el.addEventListener('touchmove', cancel, { passive: false });
+            el.addEventListener('touchcancel', cancel, { passive: false });
+        }
 
         function openFillModal(slotEl) {
+            fillSlotEl = slotEl;
+            renderFillCandidates();
+            fillModal.classList.add('open');
+        }
+
+        // 渲染填空弹窗候选卡：线索卡可勾选（用于组合），推理结果卡点击直接填入
+        // highlightId: 渲染后为该卡片加闪烁提示（组合完成后高亮新推理结果）
+        function renderFillCandidates(highlightId) {
+            const slotEl = fillSlotEl;
+            if (!slotEl) return;
             // 统一规则：线索/推理类空位只列出线索与推理结果卡片（已消费或正放置在空位中的不列出）
             const candidates = fillCandidates('clue');
+            fillList.innerHTML = '';
             if (candidates.length === 0) {
                 fillList.innerHTML = '<div class="empty">没有可用的卡片，请先点击剧情中的高亮词收集，或通过组合推理获得</div>';
             } else {
-                fillList.innerHTML = '';
                 candidates.forEach(block => {
                     const item = document.createElement('div');
-                    item.className = 'fill-item';
-                    item.innerHTML = `${block.label}<span class="block-type">${BLOCK_TYPE_NAME[block.type] || '卡片'}</span>`;
-                    item.addEventListener('click', function() {
-                        if (fillSlot(slotEl, block.id)) {
-                            closeFillModal();
-                            if (!slotEl.classList.contains('branch-wrong')) {
-                                showToast(`✓ 填入「${block.label}」成功！`, 'success');
-                            }
+                    item.dataset.block = block.id;
+                    if (block.type === 'clue') {
+                        const sel = state.selectedClueIds.indexOf(block.id) > -1;
+                        item.className = 'fill-item selectable' + (sel ? ' selected' : '');
+                        item.innerHTML = `${block.label}<span class="block-type">线索</span>` +
+                            (block.detail ? `<div class="block-detail">${block.detail}</div>` : '');
+                        if (fillSelectMode) {
+                            // 组合模式：点击 = 勾选/取消，用于组合
+                            item.addEventListener('click', function() {
+                                toggleSelectClue(block.id);
+                                renderFillCandidates();
+                            });
                         } else {
-                            item.classList.add('wrong-flash');
-                            showToast('❌ 这个块不适合这个位置', 'error');
-                            setTimeout(() => item.classList.remove('wrong-flash'), 500);
+                            // 普通模式：短按直接填入；长按进入组合模式并选中该线索
+                            bindHoldTap(item, function() {
+                                fillSelectMode = true;
+                                toggleSelectClue(block.id);
+                                renderFillCandidates();
+                            }, function() {
+                                if (fillSlot(slotEl, block.id)) {
+                                    closeFillModal();
+                                    if (!slotEl.classList.contains('branch-wrong')) {
+                                        showToast(`✓ 填入「${block.label}」成功！`, 'success');
+                                    }
+                                } else {
+                                    item.classList.add('wrong-flash');
+                                    showToast('❌ 这个块不适合这个位置', 'error');
+                                    setTimeout(() => item.classList.remove('wrong-flash'), 500);
+                                }
+                            });
                         }
-                    });
+                    } else {
+                        item.className = 'fill-item';
+                        item.innerHTML = `${block.label}<span class="block-type">${BLOCK_TYPE_NAME[block.type] || '卡片'}</span>`;
+                        item.addEventListener('click', function() {
+                            if (fillSlot(slotEl, block.id)) {
+                                closeFillModal();
+                                if (!slotEl.classList.contains('branch-wrong')) {
+                                    showToast(`✓ 填入「${block.label}」成功！`, 'success');
+                                }
+                            } else {
+                                item.classList.add('wrong-flash');
+                                showToast('❌ 这个块不适合这个位置', 'error');
+                                setTimeout(() => item.classList.remove('wrong-flash'), 500);
+                            }
+                        });
+                    }
                     fillList.appendChild(item);
                 });
             }
-            fillModal.classList.add('open');
+            if (highlightId) {
+                const target = fillList.querySelector(`.fill-item[data-block="${highlightId}"]`);
+                if (target) {
+                    target.classList.add('flash-new');
+                    if (target.scrollIntoView) target.scrollIntoView({ block: 'nearest' });
+                }
+            }
+            updateFillComboBar();
         }
+
+        // 更新填空弹窗底部的快速组合栏
+        function updateFillComboBar() {
+            const count = state.selectedClueIds.length;
+            fillComboCount.textContent = count;
+            fillComboBtn.disabled = count < 2;
+            fillComboBar.style.display = (fillSelectMode || count > 0) ? 'flex' : 'none';
+            fillComboTip.textContent = fillSelectMode
+                ? '组合模式：点选线索，选好后再点「组合推理」'
+                : `已选 ${count} 条线索，可组合推理`;
+        }
+
+        // 弹窗内组合：组合成功后不自动填入，新推理卡闪烁提示，由玩家手动点选填入
+        fillComboBtn.addEventListener('click', function() {
+            const sel = state.selectedClueIds.slice();
+            if (sel.length < 2) {
+                showToast('请至少选择两条线索', 'error');
+                return;
+            }
+            const r = tryCombine(sel);
+            if (!r.ok) {
+                // 弹窗会盖住 toast，改用选中卡的红框震动提示
+                fillList.querySelectorAll('.fill-item.selected').forEach(function(el) {
+                    el.classList.add('combo-fail');
+                    setTimeout(function() { el.classList.remove('combo-fail'); }, 700);
+                });
+                return;
+            }
+            fillSelectMode = false;
+            state.selectedClueIds = [];
+            renderClues();
+            // 弹窗内反馈：新推理卡闪烁提示即可，无需 toast
+            renderFillCandidates(r.block ? r.block.id : null);
+        });
+
+        fillComboClear.addEventListener('click', function() {
+            fillSelectMode = false;
+            state.selectedClueIds = [];
+            renderClues();
+            renderFillCandidates();
+        });
 
         function closeFillModal() {
             fillModal.classList.remove('open');
             fillList.innerHTML = '';
+            fillSlotEl = null;
+            fillSelectMode = false;
+            fillComboBar.style.display = 'none';
         }
 
         fillClose.addEventListener('click', closeFillModal);
@@ -3137,6 +3491,7 @@
             currentSceneOwner = save.currentSceneOwner || 'wu';
             pendingScene = null;
             stopTyping();
+            finishBranchTyping();
             storySceneId = null;
             loadScene(state.scene);
         }
