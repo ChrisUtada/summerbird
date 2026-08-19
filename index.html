@@ -3610,18 +3610,28 @@
         const bgm = document.getElementById('bgm');
         const btnMusic = document.getElementById('btnMusic');
         let bgmPlaying = false;
+        // 从封面页继承音乐状态（sessionStorage 标记）
+        if (sessionStorage.getItem('bgmOn') === '1') {
+            bgm.play().then(function() {
+                bgmPlaying = true;
+                btnMusic.classList.add('playing');
+                btnMusic.textContent = '♫';
+            }).catch(function() {});
+        }
         btnMusic.addEventListener('click', function() {
             if (bgmPlaying) {
                 bgm.pause();
                 bgmPlaying = false;
+                sessionStorage.setItem('bgmOn', '0');
                 btnMusic.classList.remove('playing');
                 btnMusic.textContent = '♪';
             } else {
                 bgm.play().then(function() {
                     bgmPlaying = true;
+                    sessionStorage.setItem('bgmOn', '1');
                     btnMusic.classList.add('playing');
                     btnMusic.textContent = '♫';
-                }).catch(function() { /* 用户首次交互前浏览器禁止自动播放，静默失败 */ });
+                }).catch(function() {});
             }
         });
     </script>
