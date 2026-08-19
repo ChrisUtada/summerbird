@@ -184,6 +184,11 @@
             gap: 6px;
             background: linear-gradient(180deg, #1e1812, #17120d);
         }
+        .title-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         .game-title {
             font-size: 20px;
             letter-spacing: 6px;
@@ -192,6 +197,26 @@
         .game-title span {
             color: #d65a3c;
             font-weight: bold;
+        }
+        .btn-music {
+            background: #241e17;
+            border: 1px solid #3a322a;
+            color: #bfae95;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: inherit;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .btn-music:hover {
+            border-color: #d65a3c;
+            color: #f0c060;
+        }
+        .btn-music.playing {
+            color: #f0c060;
+            border-color: #d65a3c;
         }
         .status-bar {
             font-size: 13px;
@@ -1658,7 +1683,10 @@
     <div id="app">
         <!-- 顶栏 -->
         <div class="top-bar">
-            <div class="game-title">鸣鸟之夏</div>
+            <div class="title-area">
+                <div class="game-title">鸣鸟之夏</div>
+                <button class="btn-music" id="btnMusic" title="背景音乐开关">♪</button>
+            </div>
             <div class="status-bar">
                 <button class="btn-drawer" data-drawer="reason" data-title="线索">
                     线索 <span class="num" id="reasonCount">0</span>
@@ -3577,6 +3605,26 @@
 
         // ---------- 启动 ----------
         loadScene(STORY.startScene || Object.keys(SCENES)[0] || 'wu_start');
+
+        // ---------- 背景音乐 ----------
+        const bgm = document.getElementById('bgm');
+        const btnMusic = document.getElementById('btnMusic');
+        let bgmPlaying = false;
+        btnMusic.addEventListener('click', function() {
+            if (bgmPlaying) {
+                bgm.pause();
+                bgmPlaying = false;
+                btnMusic.classList.remove('playing');
+                btnMusic.textContent = '♪';
+            } else {
+                bgm.play().then(function() {
+                    bgmPlaying = true;
+                    btnMusic.classList.add('playing');
+                    btnMusic.textContent = '♫';
+                }).catch(function() { /* 用户首次交互前浏览器禁止自动播放，静默失败 */ });
+            }
+        });
     </script>
+    <audio id="bgm" src="samuelfjohanns-darker-ambient-in-scandinavian-forest.mp3" loop preload="auto"></audio>
 </body>
 </html>
