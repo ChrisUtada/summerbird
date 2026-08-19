@@ -3607,38 +3607,42 @@
         loadScene(STORY.startScene || Object.keys(SCENES)[0] || 'wu_start');
 
         // ---------- 背景音乐 ----------
-        const bgm = document.getElementById('bgm');
-        const btnMusic = document.getElementById('btnMusic');
-        let bgmPlaying = false;
-        let bgmStarted = false;
-        function setBgmUI(on) {
-            bgmPlaying = on;
-            sessionStorage.setItem('bgmOn', on ? '1' : '0');
-            btnMusic.classList.toggle('playing', on);
-            btnMusic.textContent = on ? '♫' : '♪';
-        }
-        // 首次交互时播放（浏览器要求必须由用户手势触发）
-        function tryPlayBgm() {
-            if (bgmStarted) return;
-            bgmStarted = true;
-            document.removeEventListener('pointerdown', tryPlayBgm);
-            document.removeEventListener('click', tryPlayBgm);
-            // 若封面页已开启音乐，或本次是首次进入，都尝试播放
-            if (sessionStorage.getItem('bgmOn') !== '0') {
-                bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
+        try {
+            const bgm = document.getElementById('bgm');
+            const btnMusic = document.getElementById('btnMusic');
+            let bgmPlaying = false;
+            let bgmStarted = false;
+            function setBgmUI(on) {
+                bgmPlaying = on;
+                sessionStorage.setItem('bgmOn', on ? '1' : '0');
+                btnMusic.classList.toggle('playing', on);
+                btnMusic.textContent = on ? '♫' : '♪';
             }
-        }
-        document.addEventListener('pointerdown', tryPlayBgm);
-        document.addEventListener('click', tryPlayBgm);
-        btnMusic.addEventListener('click', function() {
-            if (bgmPlaying) {
-                bgm.pause();
-                setBgmUI(false);
-            } else {
+            // 首次用户点击时播放（浏览器要求必须由用户手势触发）
+            // 同时监听 click 和 pointerdown，哪个先触发哪个生效
+            function onFirstClick() {
+                if (bgmStarted) return;
                 bgmStarted = true;
-                bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
+                document.removeEventListener('click', onFirstClick);
+                storyEl.removeEventListener('pointerdown', onFirstClick);
+                if (bgm.paused) {
+                    bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
+                }
             }
-        });
+            document.addEventListener('click', onFirstClick);
+            storyEl.addEventListener('pointerdown', onFirstClick);
+            // 手动开关
+            btnMusic.addEventListener('click', function(e) {
+                e.stopPropagation(); // 阻止冒泡触发 onFirstClick
+                if (bgmPlaying) {
+                    bgm.pause();
+                    setBgmUI(false);
+                } else {
+                    bgmStarted = true;
+                    bgm.play().then(function() { setBgmUI(true); }).catch(function() {});
+                }
+            });
+        } catch (e) { console.error('bgm init error:', e); }
     </script>
     <audio id="bgm" src="samuelfjohanns-darker-ambient-in-scandinavian-forest.mp3" loop preload="auto"></audio>
 </body>
