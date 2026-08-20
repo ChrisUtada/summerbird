@@ -235,6 +235,10 @@
         <option value="all">线路：通用</option>
     </select>
     <select id="sceneGoto" title="完成后跳转"></select>
+    <select id="sceneType" title="场景类型">
+        <option value="story">类型：普通场景</option>
+        <option value="interlude">类型：题词过渡页</option>
+    </select>
     <span class="tb-right">
         <span id="saveState">就绪</span>
         <button id="btnSave" title="保存到本地">保存</button>
@@ -394,7 +398,8 @@
     function renderSceneSel() {
         const sel = $('sceneSel');
         sel.innerHTML = ED.scenes.map(function (s) {
-            return '<option value="' + s.id + '"' + (s.id === currentSceneId ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>';
+            var tag = (s.type === 'interlude') ? '〔题词〕' : '';
+            return '<option value="' + s.id + '"' + (s.id === currentSceneId ? ' selected' : '') + '>' + escapeHtml(s.id) + tag + '</option>';
         }).join('');
         const sc = getScene();
         if (sc) {
@@ -404,7 +409,12 @@
                 .filter(s => s.id !== currentSceneId)
                 .map(s => '<option value="' + s.id + '"' + (s.id === sc.goto ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>')
                 .join('');
-            $('storyText').value = sc.story || '';
+            if ($('sceneType')) $('sceneType').value = sc.type || 'story';
+            var isInterlude = (sc.type === 'interlude');
+            $('storyText').value = isInterlude ? (sc.quote || '') : (sc.story || '');
+            $('storyText').placeholder = isInterlude
+                ? '题词文本（支持换行，可用空行 + —— 署名，例如：\n风穿过洞穴，没有声音。\n\n—— 间章）'
+                : '在此编写剧本：中文文本 + 符号标记。每行一个块：# 标题 / @名字: 台词 / --- 分隔线 / 普通叙述';
         }
         updatePreview();
     }
@@ -431,10 +441,11 @@
     $('sceneBg').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.bg = this.value; markDirty(); } });
     $('sceneOwner').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.owner = this.value; markDirty(); } });
     $('sceneGoto').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.goto = this.value || null; markDirty(); } });
+    $('sceneType').addEventListener('change', function () { const sc = getScene(); if (!sc) return; sc.type = this.value; if (sc.type === 'interlude') { if (sc.quote === undefined) sc.quote = sc.story || ''; } else { if (sc.story === undefined) sc.story = sc.quote || ''; } markDirty(); renderSceneSel(); });
     $('storyText').addEventListener('input', function () {
         const sc = getScene();
         if (!sc) return;
-        sc.story = this.value;
+        if (sc.type === 'interlude') sc.quote = this.value; else sc.story = this.value;
         markDirty();
         updatePreview();
     });
@@ -1030,11 +1041,13 @@
                 id: sc.id,
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
-                story: sc.story || '',
+                type: sc.type || 'story',
+                story: sc.type === 'interlude' ? '' : (sc.story || ''),
                 initBlocks: [],
                 goto: sc.goto || null,
                 nextHint: sc.nextHint || ''
             };
+            if (sc.type === 'interlude') sceneOut.quote = sc.quote || '';
             if (Object.keys(slotBranches).length) sceneOut.slotBranches = slotBranches;
             return sceneOut;
         });
@@ -1078,11 +1091,14 @@
         });
         // 场景：符号转换
         (story.scenes || []).forEach(function (sc) {
+            var isInter = (sc.type === 'interlude');
             ED.scenes.push({
                 id: sc.id,
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
-                story: convertStoryText(sc.story || '', data, sc.initBlocks),
+                type: sc.type || 'story',
+                story: isInter ? '' : convertStoryText(sc.story || '', data, sc.initBlocks),
+                quote: isInter ? (sc.quote || sc.story || '') : '',
                 goto: sc.goto || null,
                 nextHint: sc.nextHint || '',
                 slotBranches: parseSlotBranches(sc.slotBranches)

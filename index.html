@@ -1704,7 +1704,7 @@
       opacity:0; pointer-events:none; z-index:10;
       padding:6vmin; text-align:center;
       filter:blur(10px); letter-spacing:0.55em;
-      transition: opacity 1.4s ease, filter 1.4s ease, letter-spacing 1.4s ease;
+      transition: opacity 0.9s ease; /* 离场仅淡出，与题词过渡页一致，避免重复模糊显得僵硬 */
     }
     #cover-reveal.show {
       opacity:1; filter:blur(0); letter-spacing:0.18em;
@@ -1719,6 +1719,35 @@
       transition: opacity 1.2s ease;
     }
     #cover-fade.on { opacity:1; }
+    #interlude-stage {
+      position:fixed; inset:0; background:#000; z-index:9999 !important;
+      display:none; align-items:center; justify-content:center;
+      visibility:visible !important; touch-action:manipulation; cursor:pointer;
+    }
+    #interlude-reveal {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none; z-index:10;
+      padding:6vmin; text-align:center;
+      filter:blur(10px); letter-spacing:0.55em;
+      transition: opacity 0.9s ease; /* 离场仅淡出，避免重复模糊/字距回归显得僵硬 */
+    }
+    #interlude-reveal.show {
+      opacity:1; filter:blur(0); letter-spacing:0.18em;
+      transition: opacity 2.4s ease, filter 2.4s ease, letter-spacing 2.4s ease;
+    }
+    #interlude-reveal .quote {
+      color:#b32020; font-size:clamp(15px,2.4vmin,26px); line-height:2.4;
+      max-width:min(760px,86vw); text-shadow:0 0 26px rgba(179,32,32,0.45);
+      white-space:pre-line;
+    }
+    .interlude-hint {
+      position:absolute; bottom:40px; right:92px; z-index:20;
+      color:#bfae95; font-size:clamp(13px,1.8vmin,18px); letter-spacing:0.18em;
+      opacity:0; pointer-events:none; text-shadow:0 0 12px rgba(0,0,0,0.7);
+    }
+    .interlude-hint.show { animation: interludeHintPulse 2.4s ease-in-out infinite; }
+    @keyframes interludeHintPulse { 0%,100% { opacity:0.5; } 50% { opacity:0.92; } }
     .btn-music-float {
       position:fixed; bottom:28px; right:28px; z-index:10001;
       background:rgba(20,16,12,0.7); border:1px solid #4a4034;
@@ -1746,8 +1775,15 @@
       <div id="cover-reveal">
         <div class="quote">……墟墓间太阴，积尸之气，久化为罗刹鸟，<br>如灰鹤而大，能变幻作祟，好食人眼……<br><br>——《子不语·卷二·罗刹鸟》</div>
       </div>
+      <div id="coverHint" class="interlude-hint">点击继续 ▸</div>
     </div>
     <div id="cover-fade"></div>
+    <div id="interlude-stage">
+      <div id="interlude-reveal">
+        <div class="quote"></div>
+      </div>
+      <div class="interlude-hint">点击继续 ▸</div>
+    </div>
     <button id="btnMusic" class="btn-music-float" title="背景音乐开关">♪</button>
 
 <div id="app" style="display:none">
@@ -2847,9 +2883,10 @@
 
         function loadScene(sceneId) {
             state.scene = sceneId;
+            const scene = SCENES[sceneId];
+            if (scene && scene.type === 'interlude') { showInterlude(scene); return; }
             pendingScene = null;
             revisitMode = false;
-            const scene = SCENES[sceneId];
             if (scene) {
                 currentSceneOwner = scene.owner || 'wu';
                 ensureInitBlocks(scene);
@@ -2857,11 +2894,81 @@
             renderAll();
         }
 
+        // ---------- 题词过渡页：纯黑底题词 + 双向交叉淡入淡出 ----------
+        function showInterlude(scene) {
+            var stage = document.getElementById('interlude-stage');
+            var reveal = document.getElementById('interlude-reveal');
+            var coverFade = document.getElementById('cover-fade');
+            var app = document.getElementById('app');
+            var quoteEl = reveal.querySelector('.quote');
+            var hintEl = stage.querySelector('.interlude-hint');
+            quoteEl.textContent = scene.quote || '';
+            hintEl.classList.remove('show');
+
+            // 进入：黑幕淡入盖住上一章 → 题词页淡入 → 黑幕淡出露出题词
+            // 关键：黑幕可能上一轮结束时被置为 display:none，必须复位为可见(opacity:0)后再淡入，否则不会过渡
+            coverFade.classList.remove('on');
+            coverFade.style.display = '';
+            void coverFade.offsetWidth; // 在 opacity:0 状态下强制重排，确保后续 add('on') 能触发过渡
+            coverFade.classList.add('on');
+            var ENTER = 1200;
+            setTimeout(function () {
+                stage.style.display = 'flex';
+                void stage.offsetWidth;
+                reveal.classList.add('show');
+                requestAnimationFrame(function () { coverFade.classList.remove('on'); }); // 黑幕淡出，题词页本身已是黑底，无跳变
+                setTimeout(function () { coverFade.style.display = 'none'; }, ENTER + 300);
+            }, ENTER);
+
+            var REVEAL_MS = 2400; // 与 CSS #interlude-reveal.show 过渡时长一致
+            var DWELL_MS = 1200;  // 题词完全显示后停留时长，再出现「点击继续」
+
+            function onTap() {
+                stage.removeEventListener('click', onTap);
+                hintEl.classList.remove('show');
+                // 离开：题词干净淡出 + 黑幕淡入盖住（避免露出游戏背景一帧）+ 交换正文 + 黑幕淡出
+                reveal.classList.remove('show');
+                coverFade.classList.remove('on');
+                coverFade.style.display = '';
+                void coverFade.offsetWidth;
+                coverFade.classList.add('on');
+                var LEAVE = 1200;
+                setTimeout(function () {
+                    stage.style.display = 'none';
+                    app.style.display = '';
+                    if (scene.goto) {
+                        app.style.opacity = '0';
+                        void app.offsetWidth;
+                        loadScene(scene.goto);
+                        requestAnimationFrame(function () {
+                            coverFade.classList.remove('on'); // 黑幕淡出
+                            app.style.opacity = '1';          // 正文同步淡入
+                        });
+                        setTimeout(function () {
+                            coverFade.style.display = 'none';
+                            app.style.opacity = '';
+                        }, LEAVE + 300);
+                    } else {
+                        coverFade.classList.remove('on');
+                        app.style.opacity = '';
+                        setTimeout(function () { coverFade.style.display = 'none'; }, LEAVE + 300);
+                    }
+                }, LEAVE);
+            }
+
+            // 题词显示完成 + 停留之后，才显示「点击继续」并允许点击离开，避免误触跳过
+            setTimeout(function () {
+                hintEl.classList.add('show');
+                stage.addEventListener('click', onTap);
+            }, ENTER + REVEAL_MS + DWELL_MS);
+        }
+
         // ---------- 回顾重游：回到一个已完成章节，整章完整显示以补齐遗漏的线索 ----------
         function revisitScene(sceneId) {
             closeDrawer();
             const scene = SCENES[sceneId];
             if (!scene) return;
+            if (scene.type === 'interlude') { showInterlude(scene); return; }
             // 先记录当前场景的填空，再载入目标场景自己的填空记录（与 renderStory 切换逻辑一致）
             if (storySceneId && storySceneId !== sceneId) {
                 state.filledSlots[storySceneId] = Array.from(state.usedBlockIds);
@@ -3743,9 +3850,13 @@
             var coverReveal = document.getElementById('cover-reveal');
             var coverFade   = document.getElementById('cover-fade');
             var coverStage  = document.getElementById('cover-stage');
+            var coverHint   = document.getElementById('coverHint');
             var coverBgm = bgm;
             var state = 'idle';
             var SINK_MS = 1800;
+            var canGoto = false;            // 引文停留完毕、提示出现后才允许点击继续
+            var REVEAL_MS = 2400;           // 与 CSS #cover-reveal.show 过渡时长一致
+            var DWELL_MS = 1200;            // 引文完全显示后停留时长，再出现「点击继续」
 
             // 音乐按钮 (#btnMusic) 已在上方统一绑定切换逻辑，封面与正文共用同一个
 
@@ -3819,14 +3930,21 @@
                     state = 'revealed';
                     coverWrapper.style.display = 'none';
                     coverReveal.classList.add('show');
+                    // 引文完全显示 + 停留后，才显示「点击继续」并允许点击继续，避免一点击就跳过
+                    setTimeout(function() {
+                        if (state !== 'revealed') return;
+                        coverHint.classList.add('show');
+                        canGoto = true;
+                    }, REVEAL_MS + DWELL_MS);
                 }, SINK_MS);
             }
 
             document.addEventListener('click', function() {
-                if (state !== 'revealed') return;
+                if (state !== 'revealed' || !canGoto) return;
                 state = 'goto';
                 ssSet('bgmOn', bgmPlaying ? '1' : '0');
                 var app = document.getElementById('app');
+                coverHint.classList.remove('show');
 
                 // 双向交叉淡入淡出：题词柔和淡出 + 黑幕淡入，避免硬切闪现
                 coverReveal.classList.remove('show');

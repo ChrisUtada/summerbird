@@ -599,6 +599,15 @@ window.__STORY__ = {
             "bg": "cloudy",
             "story": "# 鸟面\n红色油彩勾描而成的鸟面与商难四目相对。\n不知从何处刮来一阵风。\n鸟面身后{线:红色的斗篷}红色的斗篷{/}，如同羽翼般张开。\n斗篷之下，空无一物。\n接着，鸟面朝着商难猛扑而来，啸叫着穿过了她的身体，消失不见。\n而就在商难的前方，赫然出现一个巨大的黑色洞穴。",
             "initBlocks": [],
+            "goto": "interlude_bridge",
+            "nextHint": ""
+        },
+        {
+            "id": "interlude_bridge",
+            "type": "interlude",
+            "owner": "all",
+            "bg": "black",
+            "quote": "风穿过洞穴，没有声音，只留下一道逐渐暗下去的回响。\n\n—— 间章",
             "goto": "chapter0201",
             "nextHint": ""
         },

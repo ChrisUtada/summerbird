@@ -41,6 +41,19 @@ step('封面下沉后进入引文态（revealed）', () => {
   assert(d.getElementById('cover-reveal').classList.contains('show'), '引文应显示');
 });
 
+// 引文尚未停留完毕时点击：不应触发跳转（修复一点击就跳过）
+d.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await sleep(200);
+step('引文未停留完毕时点击：不触发跳转（防误触跳过）', () => {
+  assert(!coverFade.classList.contains('on'), '黑幕不应开始淡入（未跳转）');
+  assert(d.getElementById('cover-reveal').classList.contains('show'), '引文仍应显示');
+});
+// 等待引文完全显示 + 停留后，右下角出现「点击继续」提示
+await sleep(3400); // 累计 ≈ revealed + 2400(淡入) + 1200(停留)
+step('停留后：右下角出现「点击继续」提示', () => {
+  const hint = d.querySelector('#coverHint');
+  assert(hint && hint.classList.contains('show'), '应显示继续提示');
+});
 // 点击任意处 → goto：题词先淡出至黑幕（阶段一：淡出）
 d.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 await sleep(200);
