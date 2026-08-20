@@ -69,6 +69,45 @@
             background:
                 linear-gradient(180deg, #232a33 0%, #141a22 55%, #0b0f15 100%);
         }
+        /* 余烬/火：暗红慢慢涌动 */
+        body.bg-ember {
+            background: #0a0405;
+        }
+        body.bg-ember .bg-layer {
+            background:
+                radial-gradient(42% 36% at 28% 68%, rgba(150, 18, 10, 0.62), transparent 60%),
+                radial-gradient(36% 30% at 72% 42%, rgba(185, 32, 14, 0.52), transparent 62%),
+                radial-gradient(58% 48% at 50% 104%, rgba(95, 8, 5, 0.72), transparent 70%),
+                #0a0405;
+            background-size: 165% 165%, 150% 150%, 175% 175%, 100% 100%;
+            background-repeat: no-repeat;
+            animation: emberDrift 17s ease-in-out infinite alternate;
+        }
+        body.bg-ember .bg-cloud-veil {
+            opacity: 0.5;
+            background: radial-gradient(60% 50% at 50% 55%, rgba(210, 46, 22, 0.26), transparent 70%);
+            mix-blend-mode: screen;
+            animation: emberPulse 7s ease-in-out infinite;
+        }
+        body.bg-ember .bg-fog {
+            opacity: 0.35;
+            background:
+                radial-gradient(ellipse 80% 55% at 40% 75%, rgba(150, 24, 12, 0.22) 0%, transparent 72%),
+                radial-gradient(ellipse 60% 45% at 75% 35%, rgba(120, 16, 9, 0.18) 0%, transparent 72%);
+            animation: emberFogDrift 13s ease-in-out infinite alternate;
+        }
+        @keyframes emberDrift {
+            0%   { background-position: 18% 30%, 72% 40%, 50% 92%; }
+            100% { background-position: 36% 24%, 58% 56%, 44% 80%; }
+        }
+        @keyframes emberPulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50%      { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes emberFogDrift {
+            from { transform: scale(1.08) translateX(-2%); }
+            to   { transform: scale(1.08) translateX(2%); }
+        }
         /* 雨天：canvas 随机粒子雨（见 JS 粒子引擎） */
         #particleCanvas {
             position: fixed;
@@ -80,6 +119,12 @@
             pointer-events: none;
             opacity: 0;
             transition: opacity 1.2s ease;
+        }
+        /* 背景天气切换：淡入淡出，避免硬切闪现 */
+        .bg-layer, .bg-cloud-veil, .bg-fog, #particleCanvas { transition: opacity 0.6s ease; }
+        .bg-layer.bg-fading, .bg-cloud-veil.bg-fading, .bg-fog.bg-fading, #particleCanvas.bg-fading {
+            opacity: 0 !important;
+            animation: none !important;
         }
         body.bg-rain #particleCanvas {
             opacity: 0.7;
@@ -2271,6 +2316,34 @@
             renderClues();
         }
 
+        // ---------- 背景天气切换（淡入淡出，避免硬切闪现） ----------
+        let currentBgType = 'cloudy';
+        function setSceneBg(bg) {
+            bg = bg || 'cloudy';
+            const layers = [
+                document.querySelector('.bg-layer'),
+                document.querySelector('.bg-cloud-veil'),
+                document.querySelector('.bg-fog'),
+                document.getElementById('particleCanvas')
+            ].filter(Boolean);
+            if (bg === currentBgType) {
+                document.body.className = 'bg-' + bg;
+                return;
+            }
+            // 阶段一：当前背景淡出（opacity → 0）
+            layers.forEach(function (l) { l.classList.add('bg-fading'); });
+            // 阶段二：淡出完成后切换天气并开始淡入
+            setTimeout(function () {
+                document.body.className = 'bg-' + bg;
+                currentBgType = bg;
+                void document.body.offsetWidth; // 强制重排，确保新背景已就位
+                if (bg === 'rain') startRain(); else stopRain();
+                requestAnimationFrame(function () {
+                    layers.forEach(function (l) { l.classList.remove('bg-fading'); });
+                });
+            }, 560);
+        }
+
         // ---------- 渲染引擎 ----------
         function renderAll() {
             renderStory();
@@ -2319,11 +2392,9 @@
                 // 场景切换：淡出旧内容 → 背景天气切换 → 构建 → 章节标题渐显（点击才开始正文打字机）
                 storyEl.classList.add('story-fade-out');
                 setTimeout(() => {
-                    // 切换背景天气
-                    document.body.className = 'bg-' + (scene.bg || 'cloudy');
-                    if (scene.bg === 'rain') startRain();
-                    else stopRain();
-                    buildStoryDom(scene);
+                // 切换背景天气（淡入淡出）
+                setSceneBg(scene.bg || 'cloudy');
+                buildStoryDom(scene);
                     storyEl.classList.remove('story-fade-out');
                     storyEl.classList.add('story-fade-in');
                     // 标题渐显停留后，等待玩家点击推进正文
@@ -2978,10 +3049,8 @@
             currentSceneOwner = scene.owner || 'wu';
             ensureInitBlocks(scene);
             state.slotConfigs = scene.slotConfigs || [];
-            // 切换背景天气
-            document.body.className = 'bg-' + (scene.bg || 'cloudy');
-            if (scene.bg === 'rain') startRain();
-            else stopRain();
+            // 切换背景天气（淡入淡出）
+            setSceneBg(scene.bg || 'cloudy');
             // 重游模式：整章完整显示，所有高亮可点
             revisitMode = true;
             buildStoryDom(scene);
