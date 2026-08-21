@@ -1,0 +1,5 @@
+# 本地项目数据（不入库）
+.workbuddy/
+
+# 宣传海报（部署用，非游戏运行文件）
+summerbird_poster_with_url.png

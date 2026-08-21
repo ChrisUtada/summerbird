@@ -240,6 +240,12 @@
         <option value="story">类型：普通场景</option>
         <option value="interlude">类型：题词过渡页</option>
     </select>
+    <select id="sceneBgm" title="背景音乐">
+        <option value="default">音乐：默认（沿用全局）</option>
+        <option value="off">音乐：完全无音乐</option>
+    </select>
+    <button id="btnScanBgm" title="选中 bgm 文件夹，自动登记其中所有音乐文件（无需手动改代码）">扫描音乐</button>
+    <input type="file" id="bgmFolderInput" webkitdirectory directory multiple style="display:none">
     <span class="tb-right">
         <span id="saveState">就绪</span>
         <button id="btnSave" title="保存到本地">保存</button>
@@ -323,6 +329,17 @@
     // 词条筛选条件 + 输入法编辑锁（编辑词条字段时不重建列表）
     let entryFilter = { type: '', q: '' };
     let entryEditing = false;
+    // 背景音乐曲库：trackId -> 文件路径。由导入/扫描填充，导出时写回 story.js，运行时 index.html 据此播放。
+    const DEFAULT_BGM = 'bgm/samuelfjohanns-darker-ambient-in-scandinavian-forest.mp3';
+    let bgmTracks = { default: DEFAULT_BGM };
+    function syncBgm() {
+        if (!ED) return;
+        if (ED.bgmTracks && Object.keys(ED.bgmTracks).length) {
+            bgmTracks = Object.assign({}, ED.bgmTracks);
+        } else {
+            ED.bgmTracks = Object.assign({}, bgmTracks);
+        }
+    }
 
     // ---------- 初始化 ----------
     function defaultED() {
@@ -330,7 +347,8 @@
             startScene: 'scene_1',
             scenes: [{ id: 'scene_1', owner: 'wu', bg: 'cloudy', story: '# 第一章', goto: null, nextHint: '', slotBranches: {} }],
             combos: [],
-            entries: []
+            entries: [],
+            bgmTracks: { default: DEFAULT_BGM }
         };
     }
     function loadED() {
@@ -411,6 +429,7 @@
                 .map(s => '<option value="' + s.id + '"' + (s.id === sc.goto ? ' selected' : '') + '>' + escapeHtml(s.id) + '</option>')
                 .join('');
             if ($('sceneType')) $('sceneType').value = sc.type || 'story';
+            if ($('sceneBgm')) $('sceneBgm').value = sc.bgm || 'default';
             var isInterlude = (sc.type === 'interlude');
             $('storyText').value = isInterlude ? (sc.quote || '') : (sc.story || '');
             $('storyText').placeholder = isInterlude
@@ -443,6 +462,48 @@
     $('sceneOwner').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.owner = this.value; markDirty(); } });
     $('sceneGoto').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.goto = this.value || null; markDirty(); } });
     $('sceneType').addEventListener('change', function () { const sc = getScene(); if (!sc) return; sc.type = this.value; if (sc.type === 'interlude') { if (sc.quote === undefined) sc.quote = sc.story || ''; } else { if (sc.story === undefined) sc.story = sc.quote || ''; } markDirty(); renderSceneSel(); });
+    // 背景音乐：从曲库 bgmTracks 追加可换曲目选项（不再依赖外部 story.js 注入）
+    function populateBgmOptions() {
+        const sel = $('sceneBgm');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '';
+        const def = document.createElement('option'); def.value = 'default'; def.textContent = '音乐：默认（沿用全局）'; sel.appendChild(def);
+        const off = document.createElement('option'); off.value = 'off'; off.textContent = '音乐：完全无音乐'; sel.appendChild(off);
+        Object.keys(bgmTracks).forEach(function (id) {
+            if (id === 'default') return; // 「默认」已单独列出
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = '音乐：' + id;
+            sel.appendChild(opt);
+        });
+        if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
+    }
+    $('sceneBgm').addEventListener('change', function () { const sc = getScene(); if (sc) { sc.bgm = this.value; markDirty(); } });
+    // 扫描 bgm/ 文件夹：自动登记所有音乐文件，免去手动改 story.js
+    $('btnScanBgm').addEventListener('click', function () { $('bgmFolderInput').click(); });
+    $('bgmFolderInput').addEventListener('change', function () {
+        const files = Array.prototype.slice.call(this.files || []);
+        const found = {};
+        files.forEach(function (f) {
+            const name = f.name || '';
+            if (!/\.(mp3|ogg|wav|m4a)$/i.test(name)) return;
+            let rel = f.webkitRelativePath ? f.webkitRelativePath.replace(/\\/g, '/') : ('bgm/' + name);
+            const idx = rel.lastIndexOf('bgm/');
+            if (idx >= 0) rel = rel.substring(idx); // 取 bgm/... 之后的相对路径，兼容「选中父目录」的情况
+            const id = name.replace(/\.[^.]+$/, '');
+            found[id] = rel;
+        });
+        if (!Object.keys(found).length) { alert('未在该文件夹中发现 mp3/ogg/wav/m4a 音乐文件'); this.value = ''; return; }
+        const merged = { default: (bgmTracks.default || DEFAULT_BGM) };
+        Object.assign(merged, found);
+        bgmTracks = merged;
+        if (ED) ED.bgmTracks = Object.assign({}, merged);
+        populateBgmOptions();
+        markDirty();
+        $('saveState').textContent = '已扫描到 ' + Object.keys(found).length + ' 首音乐并写入曲库';
+        this.value = '';
+    });
     $('storyText').addEventListener('input', function () {
         const sc = getScene();
         if (!sc) return;
@@ -1046,7 +1107,8 @@
                 story: sc.type === 'interlude' ? '' : (sc.story || ''),
                 initBlocks: [],
                 goto: sc.goto || null,
-                nextHint: sc.nextHint || ''
+                nextHint: sc.nextHint || '',
+                bgm: sc.bgm || 'default'
             };
             if (sc.type === 'interlude') sceneOut.quote = sc.quote || '';
             if (Object.keys(slotBranches).length) sceneOut.slotBranches = slotBranches;
@@ -1055,6 +1117,7 @@
         return {
             startScene: ED.scenes[0] ? ED.scenes[0].id : '', // 列表第一个场景即起始场景
             speakers: { wu: '吴秋崖', shan: '商难', old: '张道诚', zhang: '张泽平' },
+            bgmTracks: Object.assign({}, bgmTracks), // 背景音乐曲库，随导出写回 story.js
             data: data,
             combinations: combinations,
             scenes: scenes
@@ -1074,6 +1137,22 @@
     });
 
     // ---------- 导入（游戏 story.js → ED） ----------
+    // 解析 story 文本：优先按 JSON 解析（编辑器导出产物，严格要求双引号）；
+    // 失败则按 JS 字面量求值（容忍 // 与 /* */ 注释，以及 window.__STORY__ = 赋值形式）。
+    function parseStory(text) {
+        const stripped = String(text).replace(/^[\s\S]*?=\s*/, '').replace(/;\s*$/, '');
+        try {
+            return JSON.parse(stripped);
+        } catch (e) {
+            try {
+                const win = {};
+                const code = String(text).replace(/window\s*\.\s*__STORY__/g, 'win.__STORY__');
+                new Function('win', code)(win);
+                if (win.__STORY__) return win.__STORY__;
+            } catch (e2) { /* 落到下方统一报错 */ }
+            throw new Error('不是有效的 story 数据（无法解析，请检查文件格式）');
+        }
+    }
     function importStory(story) {
         ED = { startScene: story.startScene || '', scenes: [], combos: [], entries: [] };
         // 词条
@@ -1098,6 +1177,7 @@
                 owner: sc.owner || 'wu',
                 bg: sc.bg || 'cloudy',
                 type: sc.type || 'story',
+                bgm: sc.bgm || 'default',
                 story: isInter ? '' : convertStoryText(sc.story || '', data, sc.initBlocks),
                 quote: isInter ? (sc.quote || sc.story || '') : '',
                 goto: sc.goto || null,
@@ -1105,6 +1185,8 @@
                 slotBranches: parseSlotBranches(sc.slotBranches)
             });
         });
+        // 背景音乐曲库
+        ED.bgmTracks = story.bgmTracks ? Object.assign({}, story.bgmTracks) : { default: DEFAULT_BGM };
     }
     function nameOf(id, data, kind) {
         if (!kind) {
@@ -1140,9 +1222,11 @@
         const reader = new FileReader();
         reader.onload = function () {
             try {
-                const parsed = JSON.parse(String(reader.result).replace(/^[\s\S]*?=\s*/, '').replace(/;\s*$/, ''));
+                const parsed = parseStory(String(reader.result));
                 if (!parsed.scenes || !parsed.data) throw new Error('不是有效的 story 数据');
                 importStory(parsed);
+                syncBgm();
+                populateBgmOptions();
                 saveLocal();
                 selectScene(ED.startScene || (ED.scenes[0] && ED.scenes[0].id));
                 renderComboRows();
@@ -1164,6 +1248,8 @@
 
     // ---------- 启动 ----------
     loadED();
+    syncBgm();
+    populateBgmOptions();
     renderSceneSel();
     renderComboRows();
     refreshEntries();
@@ -1179,9 +1265,12 @@
             renderComboRows();
             refreshEntries();
             validate();
+            syncBgm();
+            populateBgmOptions();
         },
         exportStory: exportStory,
-        getED: function () { return ED; }
+        getED: function () { return ED; },
+        parseStoryText: parseStory
     };
 })();
 </script>

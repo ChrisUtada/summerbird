@@ -1954,7 +1954,7 @@
         </div>
     </div>
     <input type="file" id="saveFileInput" accept=".json,.txt" hidden />
-    <audio id="bgm" src="samuelfjohanns-darker-ambient-in-scandinavian-forest.mp3" loop preload="auto"></audio>
+    <audio id="bgm" loop preload="auto"></audio>
 
     <script src="compiler.js"></script>
     <script src="story.js"></script>
@@ -2394,6 +2394,8 @@
                 setTimeout(() => {
                 // 切换背景天气（淡入淡出）
                 setSceneBg(scene.bg || 'cloudy');
+                // 按场景 bgm 字段应用（默认/静音/换曲）
+                applyBgm(scene.bgm);
                 buildStoryDom(scene);
                     storyEl.classList.remove('story-fade-out');
                     storyEl.classList.add('story-fade-in');
@@ -3051,6 +3053,8 @@
             state.slotConfigs = scene.slotConfigs || [];
             // 切换背景天气（淡入淡出）
             setSceneBg(scene.bg || 'cloudy');
+            // 按场景 bgm 字段应用（默认/静音/换曲）
+            applyBgm(scene.bgm);
             // 重游模式：整章完整显示，所有高亮可点
             revisitMode = true;
             buildStoryDom(scene);
@@ -3885,29 +3889,90 @@
             } catch (e) {}
         }
 
-        // ---------- 背景音乐（封面+正文共享） ----------
+        // ---------- 背景音乐（封面+正文共享，支持按章换曲/静音） ----------
         try {
+            var bgmTracks = (window.__STORY__ && window.__STORY__.bgmTracks) || { default: 'bgm/samuelfjohanns-darker-ambient-in-scandinavian-forest.mp3' };
             var bgm = document.getElementById('bgm');
             var btnMusic = document.getElementById('btnMusic');
-            var bgmPlaying = false;
-            var bgmStarted = false;
+            var bgmPlaying = false;        // 当前是否实际在播
+            var bgmStarted = false;        // 是否已尝试起播过
+            var userMuted = false;         // 玩家手动全局静音（优先级最高）
+            var currentTrackId = null;     // 当前曲目 id
+            var bgmFadeRAF = null;
+
+            function trackSrc(id) {
+                if (!id || id === 'default') return bgmTracks.default;
+                return bgmTracks[id] || bgmTracks.default;
+            }
+
+            // 音量淡入淡出（约 600ms），与背景切换观感一致
+            function fadeBgm(target, done) {
+                if (bgmFadeRAF) cancelAnimationFrame(bgmFadeRAF);
+                var from = (typeof bgm.volume === 'number' && isFinite(bgm.volume)) ? bgm.volume : 0;
+                var startT = (window.performance && performance.now) ? performance.now() : Date.now();
+                var dur = 600;
+                function step() {
+                    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+                    var t = Math.min(1, Math.max(0, (now - startT) / dur));
+                    bgm.volume = from + (target - from) * t;
+                    if (t < 1) bgmFadeRAF = requestAnimationFrame(step);
+                    else if (done) done();
+                }
+                bgmFadeRAF = requestAnimationFrame(step);
+            }
+
             function setBgmUI(on) {
                 bgmPlaying = on;
                 ssSet('bgmOn', on ? '1' : '0');
                 btnMusic.classList.toggle('playing', on);
                 btnMusic.textContent = on ? '♫' : '♪';
             }
+
+            // 起播某曲目（用户未手动静音时）
+            function playTrack(id) {
+                if (userMuted) return;
+                if (currentTrackId === id && !bgm.paused) return; // 已在播同曲，避免重复淡入
+                var src = trackSrc(id);
+                if (currentTrackId !== id) {
+                    bgm.src = src;
+                    currentTrackId = id;
+                }
+                bgm.volume = 0;
+                playBgm(bgm, function () { setBgmUI(true); });
+                fadeBgm(1);
+            }
+
+            // 按场景 bgm 字段应用：缺省/default = 播默认曲；off = 完全无音乐；trackId = 换曲
+            function applyBgm(spec) {
+                if (userMuted) {
+                    if (!bgm.paused) fadeBgm(0, function () { bgm.pause(); });
+                    return;
+                }
+                if (spec === 'off') {
+                    if (!bgm.paused) fadeBgm(0, function () { bgm.pause(); });
+                    return;
+                }
+                playTrack((spec && spec !== 'default') ? spec : 'default');
+            }
+
             function btnBgmToggle(e) {
                 e.stopPropagation();
-                if (bgmPlaying) {
-                    bgm.pause();
+                if (bgmPlaying || !bgm.paused) {
+                    userMuted = true;
+                    fadeBgm(0, function () { bgm.pause(); });
                     setBgmUI(false);
                 } else {
+                    userMuted = false;
                     bgmStarted = true;
-                    playBgm(bgm, function() { setBgmUI(true); });
+                    if (!currentTrackId) currentTrackId = 'default';
+                    playTrack(currentTrackId);
                 }
             }
             btnMusic.addEventListener('click', btnBgmToggle);
+
+            // 初始 src 指向默认曲
+            bgm.src = trackSrc('default');
+            bgm.volume = 1;
         } catch (e) { console.error('bgm init error:', e); }
 
         // ---------- 启动：先渲染首场景进隐藏的 #app（封面盖在其上，玩家点掉封面后 goto 会再 loadScene 刷新） ----------
@@ -3932,10 +3997,7 @@
             function coverTryAutoPlay() {
                 if (bgmStarted) return;
                 bgmStarted = true;
-                playBgm(coverBgm, function() {
-                    bgmPlaying = true;
-                    setBgmUI(true);
-                });
+                playTrack('default'); // 尊重 userMuted；否则起播默认曲
             }
             coverWrapper.addEventListener('pointerdown', coverTryAutoPlay, { once: true });
 
@@ -4023,15 +4085,9 @@
                 setTimeout(function() {
                     coverStage.style.display = 'none';
                     app.style.display = '';
-                    if (bgmPlaying && coverBgm.paused) {
-                        playBgm(coverBgm, function() { setBgmUI(true); });
-                    } else if (!bgmStarted && ssGet('bgmOn') !== '0') {
-                        bgmStarted = true;
-                        playBgm(coverBgm, function() {
-                            bgmPlaying = true;
-                            setBgmUI(true);
-                        });
-                    }
+                    if (!bgmStarted && ssGet('bgmOn') !== '0') bgmStarted = true;
+                    // 进入正文时的 BGM 由 loadScene 按场景 bgm 字段统一处理（尊重 userMuted）
+                    applyBgm((SCENES[STORY.startScene] || {}).bgm);
                     loadScene(STORY.startScene || Object.keys(SCENES)[0] || 'wu_start');
                     // 正文先置于透明，随黑幕一同淡入
                     app.style.opacity = '0';
